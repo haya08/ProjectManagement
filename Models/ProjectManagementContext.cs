@@ -1,0 +1,183 @@
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
+
+namespace ProjectManagement.Models;
+
+public partial class ProjectManagementContext : DbContext
+{
+    public ProjectManagementContext()
+    {
+    }
+
+    public ProjectManagementContext(DbContextOptions<ProjectManagementContext> options)
+        : base(options)
+    {
+    }
+
+    public virtual DbSet<TbAttachment> TbAttachments { get; set; }
+
+    public virtual DbSet<TbComment> TbComments { get; set; }
+
+    public virtual DbSet<TbNotification> TbNotifications { get; set; }
+
+    public virtual DbSet<TbProject> TbProjects { get; set; }
+
+    public virtual DbSet<TbProjectMember> TbProjectMembers { get; set; }
+
+    public virtual DbSet<TbTask> TbTasks { get; set; }
+
+    public virtual DbSet<TbTaskHistory> TbTaskHistories { get; set; }
+
+    public virtual DbSet<TbUser> TbUsers { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+
+    }
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<TbAttachment>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Attachme__3214EC073AE3B018");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.FileUrl).HasMaxLength(1);
+
+            entity.HasOne(d => d.Task).WithMany(p => p.TbAttachments)
+                .HasForeignKey(d => d.TaskId)
+                .HasConstraintName("FK__Attachmen__TaskI__4CA06362");
+
+            entity.HasOne(d => d.UploadedByNavigation).WithMany(p => p.TbAttachments)
+                .HasForeignKey(d => d.UploadedBy)
+                .HasConstraintName("FK__Attachmen__Uploa__4D94879B");
+        });
+
+        modelBuilder.Entity<TbComment>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Comments__3214EC07279B244E");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Content).HasMaxLength(1);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+
+            entity.HasOne(d => d.Task).WithMany(p => p.TbComments)
+                .HasForeignKey(d => d.TaskId)
+                .HasConstraintName("FK__Comments__TaskId__4AB81AF0");
+
+            entity.HasOne(d => d.User).WithMany(p => p.TbComments)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK__Comments__UserId__4BAC3F29");
+        });
+
+        modelBuilder.Entity<TbNotification>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Notifica__3214EC07D6006DDB");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.Message).HasMaxLength(1);
+            entity.Property(e => e.Type).HasMaxLength(1);
+
+            entity.HasOne(d => d.User).WithMany(p => p.TbNotifications)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK__Notificat__UserI__4E88ABD4");
+        });
+
+        modelBuilder.Entity<TbProject>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Projects__3214EC077FDC379D");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.Description).HasMaxLength(1);
+            entity.Property(e => e.Name).HasMaxLength(1);
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.TbProjects)
+                .HasForeignKey(d => d.CreatedBy)
+                .HasConstraintName("FK__Projects__Create__44FF419A");
+        });
+
+        modelBuilder.Entity<TbProjectMember>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__ProjectM__3214EC07F20E807A");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.JoinedAt).HasColumnType("datetime");
+            entity.Property(e => e.Role).HasMaxLength(1);
+
+            entity.HasOne(d => d.Project).WithMany(p => p.TbProjectMembers)
+                .HasForeignKey(d => d.ProjectId)
+                .HasConstraintName("FK__ProjectMe__Proje__45F365D3");
+
+            entity.HasOne(d => d.User).WithMany(p => p.TbProjectMembers)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK__ProjectMe__UserI__46E78A0C");
+        });
+
+        modelBuilder.Entity<TbTask>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Tasks__3214EC07B727A843");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.Description).HasMaxLength(1);
+            entity.Property(e => e.DueDate).HasColumnType("datetime");
+            entity.Property(e => e.Priority).HasMaxLength(1);
+            entity.Property(e => e.Status).HasMaxLength(1);
+            entity.Property(e => e.Title).HasMaxLength(1);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.TbTaskAssignedToNavigations)
+                .HasForeignKey(d => d.AssignedTo)
+                .HasConstraintName("FK__Tasks__AssignedT__48CFD27E");
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.TbTaskCreatedByNavigations)
+                .HasForeignKey(d => d.CreatedBy)
+                .HasConstraintName("FK__Tasks__CreatedBy__49C3F6B7");
+
+            entity.HasOne(d => d.Project).WithMany(p => p.TbTasks)
+                .HasForeignKey(d => d.ProjectId)
+                .HasConstraintName("FK__Tasks__ProjectId__47DBAE45");
+        });
+
+        modelBuilder.Entity<TbTaskHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__TaskHist__3214EC075D06874D");
+
+            entity.ToTable("TbTaskHistory");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.ChangedAt).HasColumnType("datetime");
+            entity.Property(e => e.FieldChanged).HasMaxLength(1);
+            entity.Property(e => e.NewValue).HasMaxLength(1);
+            entity.Property(e => e.OldValue).HasMaxLength(1);
+
+            entity.HasOne(d => d.ChangedByNavigation).WithMany(p => p.TbTaskHistories)
+                .HasForeignKey(d => d.ChangedBy)
+                .HasConstraintName("FK__TaskHisto__Chang__5070F446");
+
+            entity.HasOne(d => d.Task).WithMany(p => p.TbTaskHistories)
+                .HasForeignKey(d => d.TaskId)
+                .HasConstraintName("FK__TaskHisto__TaskI__4F7CD00D");
+        });
+
+        modelBuilder.Entity<TbUser>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Users__3214EC07E9B48031");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.Email).HasMaxLength(1);
+            entity.Property(e => e.Name).HasMaxLength(1);
+            entity.Property(e => e.PasswordHash).HasMaxLength(1);
+            entity.Property(e => e.Role).HasMaxLength(1);
+            entity.Property(e => e.Status).HasMaxLength(1);
+        });
+
+        OnModelCreatingPartial(modelBuilder);
+    }
+
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+}
