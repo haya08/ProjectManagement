@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using ProjectManagement.BL.Implementations;
+using ProjectManagement.BL.Interfaces;
 using ProjectManagement.Models;
+using ProjectManagement.Repositories.Implementations;
+using ProjectManagement.Repositories.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,9 +13,15 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// database conection
+// database connection
 builder.Services.AddDbContext<ProjectManagementContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    )
+);
+
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<ITask, ClsTask>();
 
 var app = builder.Build();
 

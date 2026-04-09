@@ -120,13 +120,12 @@ public partial class ProjectManagementContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Tasks__3214EC07B727A843");
 
-            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
-            entity.Property(e => e.Description).HasMaxLength(1);
+            entity.Property(e => e.Description).HasMaxLength(200);
             entity.Property(e => e.DueDate).HasColumnType("datetime");
-            entity.Property(e => e.Priority).HasMaxLength(1);
-            entity.Property(e => e.Status).HasMaxLength(1);
-            entity.Property(e => e.Title).HasMaxLength(1);
+            entity.Property(e => e.Priority).HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.Title).HasMaxLength(50);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
             entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.TbTaskAssignedToNavigations)
