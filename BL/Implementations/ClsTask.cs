@@ -1,4 +1,5 @@
 ﻿using ProjectManagement.BL.Interfaces;
+using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
@@ -14,12 +15,12 @@ namespace ProjectManagement.BL.Implementations
             _repo = repo;
         }
 
-        public ApiResponse GetAllTasks()
+        public ApiResponse GetAllTasks(TaskQueryDTO query)
         {
             var result = new ApiResponse();
             try
             {
-                var tasks = _repo.GetAll();
+                var tasks = _repo.GetAll(query);
 
                 result.Data = tasks.Select(t => new TasksDTO
                 {
@@ -214,7 +215,7 @@ namespace ProjectManagement.BL.Implementations
                 // validations
 
                 // Task must exist
-                var task = _repo.GetById(dto.id);
+                var task = _repo.GetById(dto.Id);
 
                 if (task == null)
                 {

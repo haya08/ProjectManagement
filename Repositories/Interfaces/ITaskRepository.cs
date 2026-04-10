@@ -1,10 +1,11 @@
-﻿using ProjectManagement.Models;
+﻿using ProjectManagement.DTOs.Tasks;
+using ProjectManagement.Models;
 
 namespace ProjectManagement.Repositories.Interfaces
 {
     public interface ITaskRepository
     {
-        List<TbTask> GetAll();
+        List<TbTask> GetAll(TaskQueryDTO query);
         TbTask GetById(int id);
         public List<TbTask> GetByProjectId(int id);
         void Add(TbTask task);

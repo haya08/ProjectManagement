@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ProjectManagement.BL.Implementations;
 using ProjectManagement.BL.Interfaces;
+using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.Tasks;
-using ProjectManagement.Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -21,17 +21,18 @@ namespace ProjectManagement.Controllers
 
         // GET: api/<TaskController>
         [HttpGet]
-        public IActionResult Get()
+        public IActionResult Get([FromQuery] TaskQueryDTO query)
         {
-            var response = _taskBL.GetAllTasks();
+            var response = _taskBL.GetAllTasks(query);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
         // GET api/<TaskController>/5
         [HttpGet("{id}")]
-        public ApiResponse Get(int id)
+        public IActionResult Get(int id)
         {
-            return _taskBL.GetTaskById(id);
+            var response = _taskBL.GetTaskById(id);
+            return StatusCode(int.Parse(response.StatusCode), response);
         }
 
         // GET api/<TaskController>/5
@@ -63,17 +64,29 @@ namespace ProjectManagement.Controllers
         // POST api/<TaskController>
         [HttpPost]
         [Route("Update")]
-        public ApiResponse Update([FromBody] UpdateTaskDTO task)
+        public IActionResult Update([FromBody] UpdateTaskDTO task)
         {
-            return _taskBL.UpdateTask(task);
+            if (!ModelState.IsValid)
+            {
+                var result = new ApiResponse
+                {
+                    Data = null,
+                    Errors = new List<object> { ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList() },
+                    StatusCode = "400"
+                };
+                return StatusCode(int.Parse(result.StatusCode), result);
+            }
+            var response = _taskBL.UpdateTask(task);
+            return StatusCode(int.Parse(response.StatusCode), response);
         }
 
         // POST api/<TaskController>
         [HttpPost]
         [Route("Delete")]
-        public ApiResponse Delete([FromBody] int id)
+        public IActionResult Delete([FromBody] int id)
         {
-            return _taskBL.DeleteTask(id);
+            var response = _taskBL.DeleteTask(id);
+            return StatusCode(int.Parse(response.StatusCode), response);
         }
     }
 }

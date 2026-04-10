@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
 
@@ -13,9 +14,27 @@ namespace ProjectManagement.Repositories.Implementations
             _context = context;
         }
 
-        public List<TbTask> GetAll()
+        public List<TbTask> GetAll(TaskQueryDTO query)
         {
-            return _context.TbTasks.ToList();
+            var tasks = _context.TbTasks.AsQueryable();
+
+            // Filtering
+            if (!string.IsNullOrEmpty(query.Status))
+            {
+                tasks = tasks.Where(t => t.Status == query.Status);
+            }
+
+            if (!string.IsNullOrEmpty(query.Priority))
+            {
+                tasks = tasks.Where(t => t.Priority == query.Priority);
+            }
+
+            // Pagination
+            tasks = tasks
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize);
+
+            return tasks.Include(t => t.AssignedToNavigation).ToList();
         }
 
         public TbTask GetById(int id)
