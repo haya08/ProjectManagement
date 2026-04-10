@@ -1,8 +1,11 @@
-﻿namespace ProjectManagement.DTOs.Tasks
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ProjectManagement.DTOs.Tasks
 {
     public class UpdateTaskDTO
     {
-        public int id { get; set; }
+        [Required]
+        public int Id { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
         public string Status { get; set; }

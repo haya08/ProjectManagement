@@ -14,92 +14,346 @@ namespace ProjectManagement.BL.Implementations
             _repo = repo;
         }
 
-        public List<TasksDTO> GetAllTasks()
+        public ApiResponse GetAllTasks()
         {
-            var tasks = _repo.GetAll();
-
-            return tasks.Select(t => new TasksDTO
+            var result = new ApiResponse();
+            try
             {
-                Id = t.Id,
-                Title = t.Title,
-                Status = t.Status,
-                Priority = t.Priority,
-                AssignedUserName = t.AssignedToNavigation?.Name,
-                DueDate = (DateTime)t.DueDate
-            }).ToList();
+                var tasks = _repo.GetAll();
+
+                result.Data = tasks.Select(t => new TasksDTO
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Status = t.Status,
+                    Priority = t.Priority,
+                    AssignedUserName = t.AssignedToNavigation?.Name,
+                    DueDate = t.DueDate
+                }).ToList(); ;
+
+                result.StatusCode = "200";
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Data = null;
+                result.Errors.Add(new { Exception = ex.Message });
+                result.StatusCode = "500";
+                return result;
+            }
+
         }
 
-        public TasksDTO GetTaskById(int id)
+        public ApiResponse GetTaskById(int id)
         {
-            var task = _repo.GetById(id);
-
-            if (task == null) return null;
-
-            return new TasksDTO
+            var result = new ApiResponse();
+            try
             {
-                Id = task.Id,
-                Title = task.Title,
-                Status = task.Status,
-                Priority = task.Priority,
-                AssignedUserName = task.AssignedToNavigation?.Name,
-                DueDate = (DateTime)task.DueDate
-            };
+                var task = _repo.GetById(id);
+
+                if (task == null)
+                {
+                    result.Data = null;
+                    result.Errors.Add(new { Message = "Task not found" });
+                    result.StatusCode = "404";
+                    return result;
+                }
+
+                result.Data = new TasksDTO
+                {
+                    Id = task.Id,
+                    Title = task.Title,
+                    Status = task.Status,
+                    Priority = task.Priority,
+                    AssignedUserName = task.AssignedToNavigation?.Name,
+                    DueDate = task.DueDate
+                };
+
+                result.StatusCode = "200";
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Data = null;
+                result.Errors.Add(new { Exception = ex.Message });
+                result.StatusCode = "500";
+                return result;
+            }
+
         }
 
         public List<TasksDTO> GetTasksByProjectId(int id)
         {
-            var tasks = _repo.GetByProjectId(id);
-
-            return tasks.Select(t => new TasksDTO
+            try
             {
-                Id = t.Id,
-                Title = t.Title,
-                Status = t.Status,
-                Priority = t.Priority,
-                AssignedUserName = t.AssignedToNavigation?.Name,
-                DueDate = t.DueDate
-            }).ToList();
-        }
+                var tasks = _repo.GetByProjectId(id);
 
-        public void CreateTask(CreateTaskDTO dto)
-        {
-            var task = new TbTask
+                return tasks.Select(t => new TasksDTO
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Status = t.Status,
+                    Priority = t.Priority,
+                    AssignedUserName = t.AssignedToNavigation?.Name,
+                    DueDate = t.DueDate
+                }).ToList();
+            }
+            catch (Exception ex)
             {
-                Title = dto.Title,
-                Description = dto.Description,
-                ProjectId = dto.ProjectId,
-                AssignedTo = dto.AssignedTo,
-                DueDate = dto.DueDate,
-                Priority = dto.Priority,
-                Status = "todo"
-            };
-
-            _repo.Add(task);
-            _repo.Save();
+                return new List<TasksDTO>();
+            }
         }
 
-        public void UpdateTask(UpdateTaskDTO dto)
+        public ApiResponse CreateTask(CreateTaskDTO dto)
         {
-            var task = _repo.GetById(dto.id);
-            if (task == null) return;
+            var result = new ApiResponse();
+            try
+            {
+                // validations
 
-            task.Title = dto.Title;
-            task.Description = dto.Description;
-            task.Status = dto.Status;
-            task.Priority = dto.Priority;
-            task.DueDate = dto.DueDate;
 
-            _repo.Update(task);
-            _repo.Save();
+                // Title required
+                if (string.IsNullOrWhiteSpace(dto.Title))
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "Title",
+                        Message = "Title is required"
+                    });
+                }
+
+                // DueDate must be in the future
+                if (dto.DueDate < DateTime.UtcNow)
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "DueDate",
+                        Message = "Due date must be in the future"
+                    });
+                }
+
+                // Priority check
+                var allowedPriorities = new[] { "low", "medium", "high" };
+                if (string.IsNullOrWhiteSpace(dto.Priority))
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "Priority",
+                        Message = "Priority is required. Allowed values: low, medium, high"
+                    });
+                }
+                else if (!allowedPriorities.Contains(dto.Priority.ToLower()))
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "Priority",
+                        Message = "Invalid priority. Allowed values: low, medium, high"
+                    });
+                }
+
+                // Project must exist
+                var projectTasks = _repo.GetByProjectId(dto.ProjectId);
+                if (projectTasks == null)
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "ProjectId",
+                        Message = "Project not found"
+                    });
+                }
+
+                if (result.Errors.Count > 0)
+                {
+                    result.Data = null;
+                    result.StatusCode = "400";
+                    return result;
+                }
+
+                // logic
+                var task = new TbTask
+                {
+                    Title = dto.Title,
+                    Description = dto.Description,
+                    ProjectId = dto.ProjectId,
+                    AssignedTo = dto.AssignedTo,
+                    DueDate = dto.DueDate,
+                    Priority = dto.Priority,
+                    Status = "todo"
+                };
+
+                _repo.Add(task);
+                _repo.Save();
+
+                result.Data = new TasksDTO
+                {
+                    Id = task.Id,
+                    Title = task.Title,
+                    Status = task.Status,
+                    Priority = task.Priority,
+                    AssignedUserName = task.AssignedToNavigation?.Name,
+                    DueDate = task.DueDate
+                };
+                result.StatusCode = "201";
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Data = null;
+                result.Errors.Add(new { Exception = ex.Message });
+                result.StatusCode = "500";
+                return result;
+            }
         }
 
-        public void DeleteTask(int id)
+        public ApiResponse UpdateTask(UpdateTaskDTO dto)
         {
-            var task = _repo.GetById(id);
-            if (task == null) return;
+            var result = new ApiResponse();
+            try
+            {
+                // validations
 
-            _repo.Delete(task);
-            _repo.Save();
+                // Task must exist
+                var task = _repo.GetById(dto.id);
+
+                if (task == null)
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "Id",
+                        Message = "Task not found"
+                    });
+                    return result;
+                }
+
+                // Title cannot be empty if provided
+                if (dto.Title != null && string.IsNullOrWhiteSpace(dto.Title))
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "Title",
+                        Message = "Title cannot be empty"
+                    });
+                }
+
+                // Priority check
+                var allowed = new[] { "low", "medium", "high" };
+                if (dto.Priority != null)
+                {
+                    if (!allowed.Contains(dto.Priority.ToLower()))
+                    {
+                        result.Errors.Add(new
+                        {
+                            Field = "Priority",
+                            Message = "Invalid priority"
+                        });
+                    }
+                }
+
+                // DueDate must be in the future
+                if (dto.DueDate.HasValue)
+                {
+                    if (dto.DueDate < DateTime.UtcNow)
+                    {
+                        result.Errors.Add(new
+                        {
+                            Field = "DueDate",
+                            Message = "Due date must be in the future"
+                        });
+                    }
+                }
+
+                // Status check
+                if (!string.IsNullOrEmpty(dto.Status))
+                {
+                    var validTransitions = new Dictionary<string, string[]>
+                    {
+                        { "todo", new[] { "in_progress" } },
+                        { "in_progress", new[] { "done" } },
+                        { "done", new string[] { } }
+                    };
+
+                    var current = task.Status?.ToLower();
+                    var next = dto.Status.ToLower();
+
+                    if (!validTransitions.ContainsKey(current) ||
+                        !validTransitions[current].Contains(next))
+                    {
+                        result.Errors.Add(new
+                        {
+                            Field = "Status",
+                            Message = $"Invalid status transition from {current} to {next}"
+                        });
+                    }
+                }
+
+                if (result.Errors.Count > 0)
+                {
+                    result.Data = null;
+                    result.StatusCode = "400";
+                    return result;
+                }
+
+                if (dto.Title != null) task.Title = dto.Title;
+                if (dto.Description != null) task.Description = dto.Description;
+                if (dto.Status != null) task.Status = dto.Status;
+                if (dto.Priority != null) task.Priority = dto.Priority;
+                if (dto.DueDate.HasValue) task.DueDate = dto.DueDate;
+
+                _repo.Update(task);
+                _repo.Save();
+
+                result.Data = new TasksDTO
+                {
+                    Id = task.Id,
+                    Title = task.Title,
+                    Status = task.Status,
+                    Priority = task.Priority,
+                    AssignedUserName = task.AssignedToNavigation?.Name,
+                    DueDate = task.DueDate
+                };
+
+                result.StatusCode = "201";
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Data = null;
+                result.Errors.Add(new { Exception = ex.Message });
+                result.StatusCode = "500";
+                return result;
+            }
+        }
+
+        public ApiResponse DeleteTask(int id)
+        {
+            var result = new ApiResponse();
+            try
+            {
+                // Task must exist
+                var task = _repo.GetById(id);
+                if (task == null)
+                {
+                    result.Errors.Add(new { Message = "Task not found" });
+                    result.StatusCode = "404";
+                    return result;
+                }
+
+                _repo.Delete(task);
+                _repo.Save();
+
+                result.StatusCode = "200";
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Data = null;
+                result.Errors.Add(new { Exception = ex.Message });
+                result.StatusCode = "500";
+                return result;
+            }
         }
     }
 }

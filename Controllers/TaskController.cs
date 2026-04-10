@@ -2,6 +2,7 @@
 using ProjectManagement.BL.Implementations;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs.Tasks;
+using ProjectManagement.Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -22,16 +23,15 @@ namespace ProjectManagement.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            return Ok(_taskBL.GetAllTasks());
+            var response = _taskBL.GetAllTasks();
+            return StatusCode(int.Parse(response.StatusCode), response);
         }
 
         // GET api/<TaskController>/5
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public ApiResponse Get(int id)
         {
-            var task = _taskBL.GetTaskById(id);
-            if (task == null) return NotFound();
-            return Ok(task);
+            return _taskBL.GetTaskById(id);
         }
 
         // GET api/<TaskController>/5
@@ -46,47 +46,34 @@ namespace ProjectManagement.Controllers
         [HttpPost]
         public IActionResult Post([FromBody] CreateTaskDTO task)
         {
-            try
+            if (!ModelState.IsValid)
             {
-                _taskBL.CreateTask(task);
-                return Ok();
+                var result = new ApiResponse
+                {
+                    Data = null,
+                    Errors = new List<object> { ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList() },
+                    StatusCode = "400"
+                };
+                return StatusCode(int.Parse(result.StatusCode), result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var response = _taskBL.CreateTask(task);
+            return StatusCode(int.Parse(response.StatusCode), response);
         }
 
         // POST api/<TaskController>
         [HttpPost]
         [Route("Update")]
-        public IActionResult Update([FromBody] UpdateTaskDTO task)
+        public ApiResponse Update([FromBody] UpdateTaskDTO task)
         {
-            try
-            {
-                _taskBL.UpdateTask(task);
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return _taskBL.UpdateTask(task);
         }
 
         // POST api/<TaskController>
         [HttpPost]
         [Route("Delete")]
-        public IActionResult Delete([FromBody] int id)
+        public ApiResponse Delete([FromBody] int id)
         {
-            try
-            {
-                _taskBL.DeleteTask(id);
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return _taskBL.DeleteTask(id);
         }
     }
 }

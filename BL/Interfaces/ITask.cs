@@ -1,14 +1,15 @@
 ﻿using ProjectManagement.DTOs.Tasks;
+using ProjectManagement.Models;
 
 namespace ProjectManagement.BL.Interfaces
 {
     public interface ITask
     {
-        public List<TasksDTO> GetAllTasks();
-        public TasksDTO GetTaskById(int id);
+        public ApiResponse GetAllTasks();
+        public ApiResponse GetTaskById(int id);
         public List<TasksDTO> GetTasksByProjectId(int id);
-        public void CreateTask(CreateTaskDTO dto);
-        public void UpdateTask(UpdateTaskDTO dto);
-        public void DeleteTask(int id);
+        public ApiResponse CreateTask(CreateTaskDTO dto);
+        public ApiResponse UpdateTask(UpdateTaskDTO dto);
+        public ApiResponse DeleteTask(int id);
     }
 }
