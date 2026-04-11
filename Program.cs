@@ -22,6 +22,8 @@ builder.Services.AddDbContext<ProjectManagementContext>(options =>
 
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<ITask, ClsTask>();
+builder.Services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();
+builder.Services.AddScoped<ITaskHistory, ClsTaskHistory>();
 
 var app = builder.Build();
 

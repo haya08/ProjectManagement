@@ -1,5 +1,6 @@
 ﻿using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
+using ProjectManagement.DTOs.TaskHistory;
 using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
@@ -9,10 +10,12 @@ namespace ProjectManagement.BL.Implementations
     public class ClsTask : ITask
     {
         private readonly ITaskRepository _repo;
+        private readonly ITaskHistory _history;
 
-        public ClsTask(ITaskRepository repo)
+        public ClsTask(ITaskRepository repo, ITaskHistory history)
         {
             _repo = repo;
+            _history = history;
         }
 
         public ApiResponse GetAllTasks(TaskQueryDTO query)
@@ -212,6 +215,7 @@ namespace ProjectManagement.BL.Implementations
             var result = new ApiResponse();
             try
             {
+
                 // validations
 
                 // Task must exist
@@ -228,19 +232,38 @@ namespace ProjectManagement.BL.Implementations
                 }
 
                 // Title cannot be empty if provided
-                if (dto.Title != null && string.IsNullOrWhiteSpace(dto.Title))
+                if (dto.Title != null)
                 {
-                    result.Errors.Add(new
+                    if(string.IsNullOrWhiteSpace(dto.Title))
                     {
-                        Field = "Title",
-                        Message = "Title cannot be empty"
-                    });
+                        result.Errors.Add(new
+                        {
+                            Field = "Title",
+                            Message = "Title cannot be empty"
+                        });
+                    }
                 }
+
+                // array for all history changes to be added at the end of validations
+                var historyChanges = new List<CreateTaskHistoryDTO>();
 
                 // Priority check
                 var allowed = new[] { "low", "medium", "high" };
-                if (dto.Priority != null)
+                if (dto.Priority != null && dto.Priority != task.Priority)
                 {
+                    // create TaskHistoryDTO
+                    var history = new CreateTaskHistoryDTO
+                    {
+                        TaskId = dto.Id,
+                        FieldChanged = "priority",
+                        OldValue = task.Priority,
+                        NewValue = dto.Priority,
+                        ChangedBy = task.CreatedBy
+                    };
+
+                    // add to historyChanges list
+                    historyChanges.Add(history);
+
                     if (!allowed.Contains(dto.Priority.ToLower()))
                     {
                         result.Errors.Add(new
@@ -265,7 +288,7 @@ namespace ProjectManagement.BL.Implementations
                 }
 
                 // Status check
-                if (!string.IsNullOrEmpty(dto.Status))
+                if (!string.IsNullOrEmpty(dto.Status) && dto.Status != task.Status)
                 {
                     var validTransitions = new Dictionary<string, string[]>
                     {
@@ -286,6 +309,56 @@ namespace ProjectManagement.BL.Implementations
                             Message = $"Invalid status transition from {current} to {next}"
                         });
                     }
+
+                    // assigned_to check: if status is changing to in_progress, dto.assigned_to cannot be null
+                    if(next == "in_progress" && !dto.AssignedTo.HasValue)
+                    {
+                        result.Errors.Add(new
+                        {
+                            Field = "AssignedTo",
+                            Message = "AssignedTo is required when status is changed to in_progress"
+                        });
+                    }
+
+                    // assigned_to check: if status is changing to done, assigned_to cannot be changing
+                    if(next == "done" && dto.AssignedTo.HasValue && dto.AssignedTo != task.AssignedTo)
+                    {
+                        result.Errors.Add(new
+                        {
+                            Field = "AssignedTo",
+                            Message = "AssignedTo cannot be changed when status is changed to done"
+                        });
+                    }
+
+                    // create TaskHistoryDTO
+                    var history = new CreateTaskHistoryDTO
+                    {
+                        TaskId = dto.Id,
+                        FieldChanged = "status",
+                        OldValue = task.Status,
+                        NewValue = dto.Status,
+                        ChangedBy = task.CreatedBy
+                    };
+
+                    // add to historyChanges list
+                    historyChanges.Add(history);
+                }
+
+                // AssignedTo check
+                if (dto.AssignedTo.HasValue && dto.AssignedTo != task.AssignedTo)
+                {
+                    // create TaskHistoryDTO
+                    var history = new CreateTaskHistoryDTO
+                    {
+                        TaskId = dto.Id,
+                        FieldChanged = "assigned_to",
+                        OldValue = task.AssignedTo?.ToString(),
+                        NewValue = dto.AssignedTo?.ToString(),
+                        ChangedBy = task.CreatedBy
+                    };
+
+                    // add to historyChanges list
+                    historyChanges.Add(history);
                 }
 
                 if (result.Errors.Count > 0)
@@ -300,6 +373,12 @@ namespace ProjectManagement.BL.Implementations
                 if (dto.Status != null) task.Status = dto.Status;
                 if (dto.Priority != null) task.Priority = dto.Priority;
                 if (dto.DueDate.HasValue) task.DueDate = dto.DueDate;
+
+                // save history changes
+                foreach (var change in historyChanges)
+                {
+                    _history.AddHistory(change);
+                }
 
                 _repo.Update(task);
                 _repo.Save();
