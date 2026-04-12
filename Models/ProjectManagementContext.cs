@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace ProjectManagement.Models;
 
-public partial class ProjectManagementContext : DbContext
+public partial class ProjectManagementContext : IdentityDbContext<ApplicationUser>
 {
     public ProjectManagementContext()
     {
@@ -29,27 +31,26 @@ public partial class ProjectManagementContext : DbContext
 
     public virtual DbSet<TbTaskHistory> TbTaskHistories { get; set; }
 
-    public virtual DbSet<TbUser> TbUsers { get; set; }
-
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
 
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<TbAttachment>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Attachme__3214EC073AE3B018");
 
-            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
-            entity.Property(e => e.FileUrl).HasMaxLength(1);
+            entity.Property(e => e.FileUrl).HasMaxLength(200);
 
-            entity.HasOne(d => d.Task).WithMany(p => p.TbAttachments)
+            entity.HasOne(d => d.Task).WithMany()
                 .HasForeignKey(d => d.TaskId)
                 .HasConstraintName("FK__Attachmen__TaskI__4CA06362");
 
-            entity.HasOne(d => d.UploadedByNavigation).WithMany(p => p.TbAttachments)
+            entity.HasOne(d => d.UploadedByNavigation).WithMany()
                 .HasForeignKey(d => d.UploadedBy)
                 .HasConstraintName("FK__Attachmen__Uploa__4D94879B");
         });
@@ -58,15 +59,14 @@ public partial class ProjectManagementContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Comments__3214EC07279B244E");
 
-            entity.Property(e => e.Id).ValueGeneratedNever();
-            entity.Property(e => e.Content).HasMaxLength(1);
+            entity.Property(e => e.Content).HasMaxLength(200);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
 
-            entity.HasOne(d => d.Task).WithMany(p => p.TbComments)
+            entity.HasOne(d => d.Task).WithMany()
                 .HasForeignKey(d => d.TaskId)
                 .HasConstraintName("FK__Comments__TaskId__4AB81AF0");
 
-            entity.HasOne(d => d.User).WithMany(p => p.TbComments)
+            entity.HasOne(d => d.User).WithMany()
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__Comments__UserId__4BAC3F29");
         });
@@ -75,12 +75,11 @@ public partial class ProjectManagementContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Notifica__3214EC07D6006DDB");
 
-            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
-            entity.Property(e => e.Message).HasMaxLength(1);
-            entity.Property(e => e.Type).HasMaxLength(1);
+            entity.Property(e => e.Message).HasMaxLength(200);
+            entity.Property(e => e.Type).HasMaxLength(50);
 
-            entity.HasOne(d => d.User).WithMany(p => p.TbNotifications)
+            entity.HasOne(d => d.User).WithMany()
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__Notificat__UserI__4E88ABD4");
         });
@@ -89,12 +88,11 @@ public partial class ProjectManagementContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Projects__3214EC077FDC379D");
 
-            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
-            entity.Property(e => e.Description).HasMaxLength(1);
-            entity.Property(e => e.Name).HasMaxLength(1);
+            entity.Property(e => e.Description).HasMaxLength(200);
+            entity.Property(e => e.Name).HasMaxLength(50);
 
-            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.TbProjects)
+            entity.HasOne(d => d.CreatedByNavigation).WithMany()
                 .HasForeignKey(d => d.CreatedBy)
                 .HasConstraintName("FK__Projects__Create__44FF419A");
         });
@@ -103,15 +101,14 @@ public partial class ProjectManagementContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__ProjectM__3214EC07F20E807A");
 
-            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.JoinedAt).HasColumnType("datetime");
-            entity.Property(e => e.Role).HasMaxLength(1);
+            entity.Property(e => e.Role).HasMaxLength(50);
 
-            entity.HasOne(d => d.Project).WithMany(p => p.TbProjectMembers)
+            entity.HasOne(d => d.Project).WithMany()
                 .HasForeignKey(d => d.ProjectId)
                 .HasConstraintName("FK__ProjectMe__Proje__45F365D3");
 
-            entity.HasOne(d => d.User).WithMany(p => p.TbProjectMembers)
+            entity.HasOne(d => d.User).WithMany()
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__ProjectMe__UserI__46E78A0C");
         });
@@ -128,15 +125,15 @@ public partial class ProjectManagementContext : DbContext
             entity.Property(e => e.Title).HasMaxLength(50);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
-            entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.TbTaskAssignedToNavigations)
+            entity.HasOne(d => d.AssignedToNavigation).WithMany()
                 .HasForeignKey(d => d.AssignedTo)
                 .HasConstraintName("FK__Tasks__AssignedT__48CFD27E");
 
-            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.TbTaskCreatedByNavigations)
+            entity.HasOne(d => d.CreatedByNavigation).WithMany()
                 .HasForeignKey(d => d.CreatedBy)
                 .HasConstraintName("FK__Tasks__CreatedBy__49C3F6B7");
 
-            entity.HasOne(d => d.Project).WithMany(p => p.TbTasks)
+            entity.HasOne(d => d.Project).WithMany()
                 .HasForeignKey(d => d.ProjectId)
                 .HasConstraintName("FK__Tasks__ProjectId__47DBAE45");
         });
@@ -147,32 +144,18 @@ public partial class ProjectManagementContext : DbContext
 
             entity.ToTable("TbTaskHistory");
 
-            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.ChangedAt).HasColumnType("datetime");
-            entity.Property(e => e.FieldChanged).HasMaxLength(1);
-            entity.Property(e => e.NewValue).HasMaxLength(1);
-            entity.Property(e => e.OldValue).HasMaxLength(1);
+            entity.Property(e => e.FieldChanged).HasMaxLength(50);
+            entity.Property(e => e.NewValue).HasMaxLength(50);
+            entity.Property(e => e.OldValue).HasMaxLength(50);
 
-            entity.HasOne(d => d.ChangedByNavigation).WithMany(p => p.TbTaskHistories)
+            entity.HasOne(d => d.ChangedByNavigation).WithMany()
                 .HasForeignKey(d => d.ChangedBy)
                 .HasConstraintName("FK__TaskHisto__Chang__5070F446");
 
-            entity.HasOne(d => d.Task).WithMany(p => p.TbTaskHistories)
+            entity.HasOne(d => d.Task).WithMany()
                 .HasForeignKey(d => d.TaskId)
                 .HasConstraintName("FK__TaskHisto__TaskI__4F7CD00D");
-        });
-
-        modelBuilder.Entity<TbUser>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__Users__3214EC07E9B48031");
-
-            entity.Property(e => e.Id).ValueGeneratedNever();
-            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
-            entity.Property(e => e.Email).HasMaxLength(1);
-            entity.Property(e => e.Name).HasMaxLength(1);
-            entity.Property(e => e.PasswordHash).HasMaxLength(1);
-            entity.Property(e => e.Role).HasMaxLength(1);
-            entity.Property(e => e.Status).HasMaxLength(1);
         });
 
         OnModelCreatingPartial(modelBuilder);

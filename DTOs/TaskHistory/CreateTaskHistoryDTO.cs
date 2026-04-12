@@ -10,6 +10,6 @@
 
         public string NewValue { get; set; }
 
-        public int? ChangedBy { get; set; }
+        public string? ChangedBy { get; set; }
     }
 }

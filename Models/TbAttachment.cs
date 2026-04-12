@@ -11,11 +11,11 @@ public partial class TbAttachment
 
     public string? FileUrl { get; set; }
 
-    public int? UploadedBy { get; set; }
+    public string? UploadedBy { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public virtual TbTask? Task { get; set; }
 
-    public virtual TbUser? UploadedByNavigation { get; set; }
+    public virtual ApplicationUser? UploadedByNavigation { get; set; }
 }

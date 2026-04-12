@@ -31,7 +31,7 @@ namespace ProjectManagement.BL.Implementations
                     Title = t.Title,
                     Status = t.Status,
                     Priority = t.Priority,
-                    AssignedUserName = t.AssignedToNavigation?.Name,
+                    AssignedUserName = t.AssignedToNavigation?.UserName,
                     DueDate = t.DueDate
                 }).ToList(); ;
 
@@ -70,7 +70,7 @@ namespace ProjectManagement.BL.Implementations
                     Title = task.Title,
                     Status = task.Status,
                     Priority = task.Priority,
-                    AssignedUserName = task.AssignedToNavigation?.Name,
+                    AssignedUserName = task.AssignedToNavigation?.UserName,
                     DueDate = task.DueDate
                 };
 
@@ -99,7 +99,7 @@ namespace ProjectManagement.BL.Implementations
                     Title = t.Title,
                     Status = t.Status,
                     Priority = t.Priority,
-                    AssignedUserName = t.AssignedToNavigation?.Name,
+                    AssignedUserName = t.AssignedToNavigation?.UserName,
                     DueDate = t.DueDate
                 }).ToList();
             }
@@ -195,7 +195,7 @@ namespace ProjectManagement.BL.Implementations
                     Title = task.Title,
                     Status = task.Status,
                     Priority = task.Priority,
-                    AssignedUserName = task.AssignedToNavigation?.Name,
+                    AssignedUserName = task.AssignedToNavigation?.UserName,
                     DueDate = task.DueDate
                 };
                 result.StatusCode = "201";
@@ -251,19 +251,6 @@ namespace ProjectManagement.BL.Implementations
                 var allowed = new[] { "low", "medium", "high" };
                 if (dto.Priority != null && dto.Priority != task.Priority)
                 {
-                    // create TaskHistoryDTO
-                    var history = new CreateTaskHistoryDTO
-                    {
-                        TaskId = dto.Id,
-                        FieldChanged = "priority",
-                        OldValue = task.Priority,
-                        NewValue = dto.Priority,
-                        ChangedBy = task.CreatedBy
-                    };
-
-                    // add to historyChanges list
-                    historyChanges.Add(history);
-
                     if (!allowed.Contains(dto.Priority.ToLower()))
                     {
                         result.Errors.Add(new
@@ -272,6 +259,22 @@ namespace ProjectManagement.BL.Implementations
                             Message = "Invalid priority"
                         });
                     }
+                    else
+                    {
+                        // create TaskHistoryDTO
+                        var history = new CreateTaskHistoryDTO
+                        {
+                            TaskId = dto.Id,
+                            FieldChanged = "priority",
+                            OldValue = task.Priority,
+                            NewValue = dto.Priority,
+                            ChangedBy = task.CreatedBy
+                        };
+
+                        // add to historyChanges list
+                        historyChanges.Add(history);
+                    }
+                    
                 }
 
                 // DueDate must be in the future
@@ -311,7 +314,7 @@ namespace ProjectManagement.BL.Implementations
                     }
 
                     // assigned_to check: if status is changing to in_progress, dto.assigned_to cannot be null
-                    if(next == "in_progress" && !dto.AssignedTo.HasValue)
+                    if(next == "in_progress" && string.IsNullOrEmpty(dto.AssignedTo))
                     {
                         result.Errors.Add(new
                         {
@@ -321,7 +324,7 @@ namespace ProjectManagement.BL.Implementations
                     }
 
                     // assigned_to check: if status is changing to done, assigned_to cannot be changing
-                    if(next == "done" && dto.AssignedTo.HasValue && dto.AssignedTo != task.AssignedTo)
+                    if(next == "done" && !string.IsNullOrEmpty(dto.AssignedTo) && dto.AssignedTo != task.AssignedTo)
                     {
                         result.Errors.Add(new
                         {
@@ -345,7 +348,7 @@ namespace ProjectManagement.BL.Implementations
                 }
 
                 // AssignedTo check
-                if (dto.AssignedTo.HasValue && dto.AssignedTo != task.AssignedTo)
+                if (!string.IsNullOrEmpty(dto.AssignedTo) && dto.AssignedTo != task.AssignedTo)
                 {
                     // create TaskHistoryDTO
                     var history = new CreateTaskHistoryDTO
@@ -389,11 +392,11 @@ namespace ProjectManagement.BL.Implementations
                     Title = task.Title,
                     Status = task.Status,
                     Priority = task.Priority,
-                    AssignedUserName = task.AssignedToNavigation?.Name,
+                    AssignedUserName = task.AssignedToNavigation?.UserName,
                     DueDate = task.DueDate
                 };
 
-                result.StatusCode = "201";
+                result.StatusCode = "200";
 
                 return result;
             }

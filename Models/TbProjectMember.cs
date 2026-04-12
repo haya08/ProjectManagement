@@ -9,7 +9,7 @@ public partial class TbProjectMember
 
     public int? ProjectId { get; set; }
 
-    public int? UserId { get; set; }
+    public string? UserId { get; set; }
 
     public string? Role { get; set; }
 
@@ -17,5 +17,5 @@ public partial class TbProjectMember
 
     public virtual TbProject? Project { get; set; }
 
-    public virtual TbUser? User { get; set; }
+    public virtual ApplicationUser? User { get; set; }
 }

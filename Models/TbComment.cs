@@ -9,7 +9,7 @@ public partial class TbComment
 
     public int? TaskId { get; set; }
 
-    public int? UserId { get; set; }
+    public string? UserId { get; set; }
 
     public string? Content { get; set; }
 
@@ -17,5 +17,5 @@ public partial class TbComment
 
     public virtual TbTask? Task { get; set; }
 
-    public virtual TbUser? User { get; set; }
+    public virtual ApplicationUser? User { get; set; }
 }

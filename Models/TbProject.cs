@@ -11,12 +11,11 @@ public partial class TbProject
 
     public string? Description { get; set; }
 
-    public int? CreatedBy { get; set; }
+    public string? CreatedBy { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual TbUser? CreatedByNavigation { get; set; }
-
+    public virtual ApplicationUser? CreatedByNavigation { get; set; }
     public virtual ICollection<TbProjectMember> TbProjectMembers { get; set; } = new List<TbProjectMember>();
 
     public virtual ICollection<TbTask> TbTasks { get; set; } = new List<TbTask>();

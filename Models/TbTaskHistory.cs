@@ -9,7 +9,7 @@ public partial class TbTaskHistory
 
     public int? TaskId { get; set; }
 
-    public int? ChangedBy { get; set; }
+    public string? ChangedBy { get; set; }
 
     public string? FieldChanged { get; set; }
 
@@ -19,7 +19,7 @@ public partial class TbTaskHistory
 
     public DateTime? ChangedAt { get; set; }
 
-    public virtual TbUser? ChangedByNavigation { get; set; }
+    public virtual ApplicationUser? ChangedByNavigation { get; set; }
 
     public virtual TbTask? Task { get; set; }
 }

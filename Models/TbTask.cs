@@ -17,9 +17,9 @@ public partial class TbTask
 
     public string? Description { get; set; }
 
-    public int? AssignedTo { get; set; }
+    public string? AssignedTo { get; set; }
 
-    public int? CreatedBy { get; set; }
+    public string? CreatedBy { get; set; }
 
     public string? Priority { get; set; }
 
@@ -31,9 +31,9 @@ public partial class TbTask
 
     public DateTime? UpdatedAt { get; set; }
 
-    public virtual TbUser? AssignedToNavigation { get; set; }
+    public virtual ApplicationUser? AssignedToNavigation { get; set; }
 
-    public virtual TbUser? CreatedByNavigation { get; set; }
+    public virtual ApplicationUser? CreatedByNavigation { get; set; }
 
     public virtual TbProject? Project { get; set; }
 
