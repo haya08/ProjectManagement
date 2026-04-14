@@ -1,4 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.Models;
 using System.IdentityModel.Tokens.Jwt;
@@ -10,19 +11,28 @@ namespace ProjectManagement.BL.Implementations
     public class ClsJWT : IJWT
     {
         private readonly IConfiguration _config;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ClsJWT(IConfiguration config)
+        public ClsJWT(IConfiguration config, UserManager<ApplicationUser> userManager)
         {
             _config = config;
+            _userManager = userManager;
         }
 
-        public string GenerateToken(ApplicationUser user)
+        public async Task<string> GenerateToken(ApplicationUser user)
         {
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Email, user.Email)
             };
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_config["JWT:Key"])

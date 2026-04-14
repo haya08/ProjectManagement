@@ -41,6 +41,8 @@ builder.Services.AddScoped<ITaskHistory, ClsTaskHistory>();
 builder.Services.AddScoped<IUser, ClsUser>();
 builder.Services.AddScoped<IJWT, ClsJWT>();
 
+builder.Services.AddHttpContextAccessor();
+
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
 {

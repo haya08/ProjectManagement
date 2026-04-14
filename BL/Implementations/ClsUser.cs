@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
@@ -7,6 +8,7 @@ using ProjectManagement.Models;
 
 namespace ProjectManagement.BL.Implementations
 {
+    [Authorize]
     public class ClsUser : IUser
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -33,6 +35,7 @@ namespace ProjectManagement.BL.Implementations
             };
         }
 
+        [AllowAnonymous]
         public async Task<ApiResponse> Login(LoginDTO dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
@@ -64,13 +67,9 @@ namespace ProjectManagement.BL.Implementations
                 },
                 StatusCode = "200"
             };
-            //return new ApiResponse
-            //{
-            //    Data = user,
-            //    StatusCode = "200"
-            //};
         }
 
+        [AllowAnonymous]
         public async Task<ApiResponse> Register(RegisterDTO dto)
         {
             var response = new ApiResponse();

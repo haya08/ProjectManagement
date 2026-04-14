@@ -4,6 +4,6 @@ namespace ProjectManagement.BL.Interfaces
 {
     public interface IJWT
     {
-        string GenerateToken(ApplicationUser user);
+        Task<string> GenerateToken(ApplicationUser user);
     }
 }

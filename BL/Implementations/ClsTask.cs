@@ -4,6 +4,7 @@ using ProjectManagement.DTOs.TaskHistory;
 using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
+using System.Security.Claims;
 
 namespace ProjectManagement.BL.Implementations
 {
@@ -11,11 +12,13 @@ namespace ProjectManagement.BL.Implementations
     {
         private readonly ITaskRepository _repo;
         private readonly ITaskHistory _history;
+        private readonly IHttpContextAccessor _httpContext;
 
-        public ClsTask(ITaskRepository repo, ITaskHistory history)
+        public ClsTask(ITaskRepository repo, ITaskHistory history, IHttpContextAccessor httpContext)
         {
             _repo = repo;
             _history = history;
+            _httpContext = httpContext;
         }
 
         public ApiResponse GetAllTasks(TaskQueryDTO query)
@@ -215,7 +218,6 @@ namespace ProjectManagement.BL.Implementations
             var result = new ApiResponse();
             try
             {
-
                 // validations
 
                 // Task must exist
@@ -230,6 +232,22 @@ namespace ProjectManagement.BL.Implementations
                     });
                     return result;
                 }
+
+                // if user is team member, check if they are assigned to the task
+                var user = _httpContext.HttpContext.User;
+                var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (user.IsInRole("TeamMember") && task.AssignedTo != userId)
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "User",
+                        Message = "You can only update tasks assigned to you"
+                    });
+                    result.StatusCode = "403";
+                    return result;
+                }
+
 
                 // Title cannot be empty if provided
                 if (dto.Title != null)

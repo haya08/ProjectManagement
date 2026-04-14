@@ -47,6 +47,7 @@ namespace ProjectManagement.Controllers
 
         // POST api/<TaskController>
         [HttpPost]
+        [Authorize(Roles = "Admin, Project Manager")]
         public IActionResult Post([FromBody] CreateTaskDTO task)
         {
             if (!ModelState.IsValid)
@@ -85,6 +86,7 @@ namespace ProjectManagement.Controllers
         // POST api/<TaskController>
         [HttpPost]
         [Route("Delete")]
+        [Authorize(Roles = "Admin")]
         public IActionResult Delete([FromBody] int id)
         {
             var response = _taskBL.DeleteTask(id);
