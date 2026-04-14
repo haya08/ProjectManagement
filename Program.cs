@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using ProjectManagement.BL.Implementations;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Implementations;
 using ProjectManagement.Repositories.Interfaces;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +39,32 @@ builder.Services.AddScoped<ITask, ClsTask>();
 builder.Services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();
 builder.Services.AddScoped<ITaskHistory, ClsTaskHistory>();
 builder.Services.AddScoped<IUser, ClsUser>();
+builder.Services.AddScoped<IJWT, ClsJWT>();
+
+// JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme; 
+})
+.AddJwtBearer(options =>
+{
+    var key = Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]);
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = false,
+        ValidateIssuerSigningKey = true,
+
+        ValidIssuer = builder.Configuration["JWT:Issuer"],
+        ValidAudience = builder.Configuration["JWT:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]))
+    };
+});
 
 var app = builder.Build();
 

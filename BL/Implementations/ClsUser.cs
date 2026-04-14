@@ -10,9 +10,11 @@ namespace ProjectManagement.BL.Implementations
     public class ClsUser : IUser
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        public ClsUser(UserManager<ApplicationUser> userManager)
+        private readonly IJWT _JWT;
+        public ClsUser(UserManager<ApplicationUser> userManager, IJWT jWT)
         {
             _userManager = userManager;
+            _JWT = jWT;
         }
 
         public async Task<ApiResponse> GetCurrentUser(string userId)
@@ -41,14 +43,32 @@ namespace ProjectManagement.BL.Implementations
             var valid = await _userManager.CheckPasswordAsync(user, dto.Password);
 
             if (!valid)
-                return new ApiResponse { StatusCode = "401" };
+                return new ApiResponse { 
+                    Errors = new List<object>
+                    {
+                        new { Field = "password", Message = "Invalid password" }
+                    },
+                    StatusCode = "401" 
+                };
 
             // هنا هنولد JWT بعد كده
+            var token = _JWT.GenerateToken(user);
+
             return new ApiResponse
             {
-                Data = user,
+                Data = new
+                {
+                    token = token,
+                    userId = user.Id,
+                    email = user.Email
+                },
                 StatusCode = "200"
             };
+            //return new ApiResponse
+            //{
+            //    Data = user,
+            //    StatusCode = "200"
+            //};
         }
 
         public async Task<ApiResponse> Register(RegisterDTO dto)
