@@ -6,6 +6,7 @@ namespace ProjectManagement.Repositories.Interfaces
     {
         void Add(TbProjectMember member);
         List<TbProjectMember> GetByProjectId(int projectId);
+        List<TbProjectMember> GetByUser(string userId);
         TbProjectMember GetByUserAndProject(string userId, int projectId);
         void Delete(TbProjectMember member);
         void Save();

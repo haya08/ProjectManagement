@@ -1,6 +1,8 @@
 ﻿using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
+using ProjectManagement.DTOs.ProjectMembers;
 using ProjectManagement.DTOs.Projects;
+using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
 using System.Security.Claims;
@@ -11,10 +13,12 @@ namespace ProjectManagement.BL.Implementations
     {
         private readonly IProjectRepository _repo;
         private readonly IHttpContextAccessor _httpContext;
-        public ClsProject(IProjectRepository repo, IHttpContextAccessor httpContext)
+        private readonly IProjectMemberRepository _projectMemberRepo;
+        public ClsProject(IProjectRepository repo, IHttpContextAccessor httpContext, IProjectMemberRepository projectMemberRepo)
         {
             _repo = repo;
             _httpContext = httpContext;
+            _projectMemberRepo = projectMemberRepo;
         }
 
         public ApiResponse GetAll()
@@ -55,6 +59,95 @@ namespace ProjectManagement.BL.Implementations
                 },
                 StatusCode = "200"
             };
+        }
+
+        public ApiResponse GetMyProjects()
+        {
+            var userId = _httpContext.HttpContext.User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var projects = _projectMemberRepo
+                .GetByUser(userId)
+                .Select(m => m.Project)
+                .Where(p => p != null)
+                .Distinct()
+                .Select(p => new ProjectsDTO
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    CreatedAt = p.CreatedAt
+                });
+
+            return new ApiResponse
+            {
+                Data = projects,
+                StatusCode = "200"
+            };
+        }
+
+        public ApiResponse GetProjectDetails(int projectId)
+        {
+            var result = new ApiResponse();
+
+            var userId = _httpContext.HttpContext.User
+                .FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // check membership
+            var membership = _projectMemberRepo
+                .GetByUserAndProject(userId, projectId);
+
+            if (membership == null)
+            {
+                result.StatusCode = "403";
+                result.Errors.Add(new { Message = "Access denied" });
+                return result;
+            }
+
+            // get data
+            var project = _repo.GetProjectWithDetails(projectId);
+
+            if (project == null)
+            {
+                result.Errors.Add(new { Message = "Project not found" });
+                result.StatusCode = "404";
+                return result;
+            }
+
+            // map data
+            var dto = new ProjectDetailsDTO
+            {
+                Project = new ProjectsDTO
+                {
+                    Id = project.Id,
+                    Name = project.Name,
+                    Description = project.Description,
+                    CreatedAt = project.CreatedAt
+                },
+
+                Members = project.TbProjectMembers.Select(m => new ProjectMemberDTO
+                {
+                    UserId = m.UserId,
+                    Role = m.Role
+                }).ToList(),
+
+                Tasks = project.TbTasks.Select(t => new TasksDTO
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Status = t.Status,
+                    Priority = t.Priority,
+                    AssignedUserName = t.AssignedToNavigation != null
+                        ? t.AssignedToNavigation.FirstName + " " + t.AssignedToNavigation.LastName
+                        : null,
+                    DueDate = t.DueDate
+                }).ToList()
+            };
+
+            result.Data = dto;
+            result.StatusCode = "200";
+
+            return result;
         }
 
         public ApiResponse Create(CreateProjectDTO dto)

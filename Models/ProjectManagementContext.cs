@@ -104,7 +104,7 @@ public partial class ProjectManagementContext : IdentityDbContext<ApplicationUse
             entity.Property(e => e.JoinedAt).HasColumnType("datetime");
             entity.Property(e => e.Role).HasMaxLength(50);
 
-            entity.HasOne(d => d.Project).WithMany()
+            entity.HasOne(d => d.Project).WithMany(pm => pm.TbProjectMembers)
                 .HasForeignKey(d => d.ProjectId)
                 .HasConstraintName("FK__ProjectMe__Proje__45F365D3");
 
@@ -133,7 +133,7 @@ public partial class ProjectManagementContext : IdentityDbContext<ApplicationUse
                 .HasForeignKey(d => d.CreatedBy)
                 .HasConstraintName("FK__Tasks__CreatedBy__49C3F6B7");
 
-            entity.HasOne(d => d.Project).WithMany()
+            entity.HasOne(d => d.Project).WithMany(p => p.TbTasks)
                 .HasForeignKey(d => d.ProjectId)
                 .HasConstraintName("FK__Tasks__ProjectId__47DBAE45");
         });

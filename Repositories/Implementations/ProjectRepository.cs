@@ -1,4 +1,5 @@
-﻿using ProjectManagement.DTOs.Tasks;
+﻿using Microsoft.EntityFrameworkCore;
+using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
 
@@ -21,6 +22,15 @@ namespace ProjectManagement.Repositories.Implementations
         public TbProject GetById(int id)
         {
             return _context.TbProjects.FirstOrDefault(t => t.Id == id);
+        }
+
+        public TbProject GetProjectWithDetails(int projectId)
+        {
+            return _context.TbProjects
+                .Include(p => p.TbTasks)
+                    .ThenInclude(t => t.AssignedToNavigation)
+                .Include(p => p.TbProjectMembers)
+                .FirstOrDefault(p => p.Id == projectId);
         }
 
         public void Add(TbProject project)

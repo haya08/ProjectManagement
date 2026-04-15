@@ -34,6 +34,20 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
+        [HttpGet("myProjects")]
+        public IActionResult GetMyProjects()
+        {
+            var result = _projectBL.GetMyProjects();
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [HttpGet("{id}/details")]
+        public IActionResult GetProjectDetails(int id)
+        {
+            var result = _projectBL.GetProjectDetails(id);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
         [Authorize(Roles = "Admin, Project Manager")]
         [HttpPost]
         public IActionResult Create([FromBody] CreateProjectDTO dto)

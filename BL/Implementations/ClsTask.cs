@@ -507,6 +507,14 @@ namespace ProjectManagement.BL.Implementations
                 return result;
             }
 
+            // cannot assign if task is done
+            if (task.Status == "done")
+            {
+                result.StatusCode = "400";
+                result.Errors.Add(new { Message = "Cannot assign task that is done" });
+                return result;
+            }
+
             //  assign
             var oldAssigned = task.AssignedTo;
             task.AssignedTo = dto.AssignedTo;
@@ -529,7 +537,12 @@ namespace ProjectManagement.BL.Implementations
             _repo.Save();
 
             result.StatusCode = "200";
-            result.Data = task;
+            result.Data = new
+            {
+                TaskId = task.Id,
+                AssignedTo = dto.AssignedTo,
+                Status = task.Status
+            };
 
             return result;
         }

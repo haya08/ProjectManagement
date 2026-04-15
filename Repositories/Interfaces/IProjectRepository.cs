@@ -6,6 +6,7 @@ namespace ProjectManagement.Repositories.Interfaces
     {
         List<TbProject> GetAll();
         TbProject GetById(int id);
+        TbProject GetProjectWithDetails(int projectId);
         void Add(TbProject project);
         void Update(TbProject project);
         void Delete(TbProject project);
