@@ -12,13 +12,15 @@ namespace ProjectManagement.BL.Implementations
     {
         private readonly ITaskRepository _repo;
         private readonly ITaskHistory _history;
+        private readonly IProjectMemberRepository _projectMemberRepo;
         private readonly IHttpContextAccessor _httpContext;
 
-        public ClsTask(ITaskRepository repo, ITaskHistory history, IHttpContextAccessor httpContext)
+        public ClsTask(ITaskRepository repo, ITaskHistory history, IHttpContextAccessor httpContext, IProjectMemberRepository projectMemberRepo)
         {
             _repo = repo;
             _history = history;
             _httpContext = httpContext;
+            _projectMemberRepo = projectMemberRepo;
         }
 
         public ApiResponse GetAllTasks(TaskQueryDTO query)
@@ -455,6 +457,81 @@ namespace ProjectManagement.BL.Implementations
                 result.StatusCode = "500";
                 return result;
             }
+        }
+
+        public ApiResponse AssignTask(AssignTaskDTO dto)
+        {
+            var result = new ApiResponse();
+
+            var userId = _httpContext.HttpContext.User
+                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            // check task exists
+            var task = _repo.GetById(dto.TaskId);
+            if (task == null)
+            {
+                result.StatusCode = "404";
+                result.Errors.Add(new { Message = "Task not found" });
+                return result;
+            }
+
+            // check current user is member in project
+            var currentMember = _projectMemberRepo
+                .GetByUserAndProject(userId, (int)task.ProjectId);
+
+            if (currentMember == null)
+            {
+                result.StatusCode = "403";
+                result.Errors.Add(new { Message = "Not part of project" });
+                return result;
+            }
+
+            // check permission (only PM or Admin)
+            var userRole = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.Role);
+
+            if (userRole != "Admin" && currentMember.Role != "ProjectManager")
+            {
+                result.StatusCode = "403";
+                result.Errors.Add(new { Message = "Not allowed to assign tasks" });
+                return result;
+            }
+
+            // check assigned user is member
+            var assignedMember = _projectMemberRepo
+                .GetByUserAndProject(dto.AssignedTo, (int)task.ProjectId);
+
+            if (assignedMember == null)
+            {
+                result.StatusCode = "400";
+                result.Errors.Add(new { Message = "User not in project" });
+                return result;
+            }
+
+            //  assign
+            var oldAssigned = task.AssignedTo;
+            task.AssignedTo = dto.AssignedTo;
+
+            // auto move status
+            if (task.Status == "todo")
+                task.Status = "in_progress";
+
+            // add history
+            _history.AddHistory(new CreateTaskHistoryDTO
+            {
+                TaskId = task.Id,
+                FieldChanged = "assigned_to",
+                OldValue = oldAssigned,
+                NewValue = dto.AssignedTo,
+                ChangedBy = userId
+            });
+
+            _repo.Update(task);
+            _repo.Save();
+
+            result.StatusCode = "200";
+            result.Data = task;
+
+            return result;
         }
     }
 }

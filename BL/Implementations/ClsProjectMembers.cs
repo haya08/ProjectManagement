@@ -32,7 +32,7 @@ namespace ProjectManagement.BL.Implementations
             var existing = _repo.GetByUserAndProject(currentUserId, dto.ProjectId);
 
             if (currentUserRole != "Admin" &&
-                (existing == null || existing.Role != "ProjectManager"))
+                (existing == null || existing.Role != "Project Manager"))
             {
                 result.Errors.Add(new { Message = "Not authorized" });
                 result.StatusCode = "403";
@@ -59,7 +59,13 @@ namespace ProjectManagement.BL.Implementations
             _repo.Add(member);
             _repo.Save();
 
-            result.Data = member;
+            result.Data = new 
+            {
+                UserId = member.UserId,
+                ProjectId = member.ProjectId,
+                Role = member.Role,
+                JoinedAt = member.JoinedAt
+            };
             result.StatusCode = "201";
 
             return result;

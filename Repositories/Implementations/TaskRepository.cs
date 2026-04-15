@@ -39,7 +39,7 @@ namespace ProjectManagement.Repositories.Implementations
 
         public TbTask GetById(int id)
         {
-            return _context.TbTasks.FirstOrDefault(t => t.Id == id);
+            return _context.TbTasks.Include(t => t.AssignedToNavigation).FirstOrDefault(t => t.Id == id);
         }
 
         public List<TbTask> GetByProjectId(int id)

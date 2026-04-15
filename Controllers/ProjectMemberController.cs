@@ -19,7 +19,7 @@ namespace ProjectManagement.Controllers
         }
 
         [HttpPost]
-        public IActionResult AddMember(AddMemberDTO dto)
+        public IActionResult AddMember([FromBody] AddMemberDTO dto)
         {
             var result = _projectMemberBL.AddMember(dto);
             return StatusCode(int.Parse(result.StatusCode), result);
@@ -32,10 +32,10 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
-        [HttpDelete]
-        public IActionResult RemoveMember(int projectId, string userId)
+        [HttpPost("RemoveMember")]
+        public IActionResult RemoveMember([FromBody] RemoveMemberDTO dto)
         {
-            var result = _projectMemberBL.RemoveMember(projectId, userId);
+            var result = _projectMemberBL.RemoveMember(dto.ProjectId, dto.UserId);
             return StatusCode(int.Parse(result.StatusCode), result);
         }
     }
