@@ -8,10 +8,12 @@ namespace ProjectManagement.Repositories.Implementations
     public class TaskRepository : ITaskRepository
     {
         private readonly ProjectManagementContext _context;
+        private readonly IProjectRepository _projectRepo;
 
-        public TaskRepository(ProjectManagementContext context)
+        public TaskRepository(ProjectManagementContext context, IProjectRepository projectRepo)
         {
             _context = context;
+            _projectRepo = projectRepo;
         }
 
         public List<TbTask> GetAll(TaskQueryDTO query)
@@ -44,11 +46,7 @@ namespace ProjectManagement.Repositories.Implementations
 
         public List<TbTask> GetByProjectId(int id)
         {
-            //return _context.TbTasks.Where(t => t.ProjectId == id).ToList();
-            return _context.TbTasks
-                .Include(t => t.AssignedToNavigation)
-                .Where(t => t.ProjectId == id)
-                .ToList();
+            return _context.TbTasks.Where(t => t.ProjectId == id).Include(t => t.AssignedToNavigation).ToList();
         }
 
         public void Add(TbTask task)
