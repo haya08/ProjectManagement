@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ProjectManagement.BL.Implementations;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
-using ProjectManagement.DTOs.Tasks;
+using ProjectManagement.DTOs.Projects;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -11,44 +10,33 @@ namespace ProjectManagement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
-    public class TaskController : ControllerBase
+    [Authorize] 
+    public class ProjectController : ControllerBase
     {
-        private readonly ITask _taskBL;
+        private readonly IProject _projectBL;
 
-        public TaskController(ITask taskBL)
+        public ProjectController(IProject projectBL)
         {
-            _taskBL = taskBL;
+            _projectBL = projectBL;
         }
 
-        // GET: api/<TaskController>
         [HttpGet]
-        public IActionResult Get([FromQuery] TaskQueryDTO query)
+        public IActionResult GetAll()
         {
-            var response = _taskBL.GetAllTasks(query);
-            return StatusCode(int.Parse(response.StatusCode), response);
+            var result = _projectBL.GetAll();
+            return StatusCode(int.Parse(result.StatusCode), result);
         }
 
-        // GET api/<TaskController>/5
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public IActionResult GetById(int id)
         {
-            var response = _taskBL.GetTaskById(id);
-            return StatusCode(int.Parse(response.StatusCode), response);
+            var result = _projectBL.GetById(id);
+            return StatusCode(int.Parse(result.StatusCode), result);
         }
 
-        // GET api/<TaskController>/5
-        [HttpGet("GetByProjectId/{id}")]
-        public IActionResult GetByProjectId(int id)
-        {
-            var tasks = _taskBL.GetTasksByProjectId(id);
-            return Ok(tasks);
-        }
-
-        // POST api/<TaskController>
+        [Authorize(Roles = "Admin, Project Manager")]
         [HttpPost]
-        [Authorize(Roles = "Admin, ProjectManager")]
-        public IActionResult Post([FromBody] CreateTaskDTO task)
+        public IActionResult Create([FromBody] CreateProjectDTO dto)
         {
             if (!ModelState.IsValid)
             {
@@ -60,14 +48,13 @@ namespace ProjectManagement.Controllers
                 };
                 return StatusCode(int.Parse(result.StatusCode), result);
             }
-            var response = _taskBL.CreateTask(task);
+            var response = _projectBL.Create(dto);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
-        // POST api/<TaskController>
-        [HttpPost]
-        [Route("Update")]
-        public IActionResult Update([FromBody] UpdateTaskDTO task)
+        [Authorize(Roles = "Admin,ProjectManager")]
+        [HttpPost("Update")]
+        public IActionResult Update([FromBody] UpdateProjectDTO dto)
         {
             if (!ModelState.IsValid)
             {
@@ -79,18 +66,16 @@ namespace ProjectManagement.Controllers
                 };
                 return StatusCode(int.Parse(result.StatusCode), result);
             }
-            var response = _taskBL.UpdateTask(task);
+            var response = _projectBL.Update(dto);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
-        // POST api/<TaskController>
-        [HttpPost]
-        [Route("Delete")]
         [Authorize(Roles = "Admin")]
+        [HttpPost("Delete")]
         public IActionResult Delete([FromBody] int id)
         {
-            var response = _taskBL.DeleteTask(id);
-            return StatusCode(int.Parse(response.StatusCode), response);
+            var result = _projectBL.Delete(id);
+            return StatusCode(int.Parse(result.StatusCode), result);
         }
     }
 }

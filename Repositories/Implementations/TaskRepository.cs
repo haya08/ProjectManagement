@@ -16,7 +16,7 @@ namespace ProjectManagement.Repositories.Implementations
 
         public List<TbTask> GetAll(TaskQueryDTO query)
         {
-            var tasks = _context.TbTasks.AsQueryable();
+            var tasks = _context.TbTasks.Include(t => t.AssignedToNavigation).AsQueryable();
 
             // Filtering
             if (!string.IsNullOrEmpty(query.Status))
@@ -34,7 +34,7 @@ namespace ProjectManagement.Repositories.Implementations
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize);
 
-            return tasks.Include(t => t.AssignedToNavigation).ToList();
+            return tasks.ToList();
         }
 
         public TbTask GetById(int id)

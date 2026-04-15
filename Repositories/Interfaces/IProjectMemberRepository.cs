@@ -1,0 +1,13 @@
+﻿using ProjectManagement.Models;
+
+namespace ProjectManagement.Repositories.Interfaces
+{
+    public interface IProjectMemberRepository
+    {
+        void Add(TbProjectMember member);
+        List<TbProjectMember> GetByProjectId(int projectId);
+        TbProjectMember GetByUserAndProject(string userId, int projectId);
+        void Delete(TbProjectMember member);
+        void Save();
+    }
+}
