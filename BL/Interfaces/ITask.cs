@@ -11,5 +11,6 @@ namespace ProjectManagement.BL.Interfaces
         public ApiResponse CreateTask(CreateTaskDTO dto);
         public ApiResponse UpdateTask(UpdateTaskDTO dto);
         public ApiResponse DeleteTask(int id);
+        public ApiResponse AssignTask(AssignTaskDTO dto);
     }
 }

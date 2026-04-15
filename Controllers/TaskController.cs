@@ -92,5 +92,13 @@ namespace ProjectManagement.Controllers
             var response = _taskBL.DeleteTask(id);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
+
+        [Authorize]
+        [HttpPost("assign")]
+        public IActionResult AssignTask([FromBody] AssignTaskDTO dto)
+        {
+            var result = _taskBL.AssignTask(dto);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
     }
 }
