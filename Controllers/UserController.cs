@@ -42,5 +42,29 @@ namespace ProjectManagement.Controllers
 
             return StatusCode(int.Parse(result.StatusCode), result);
         }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("approve/{userId}")]
+        public async Task<IActionResult> Approve(string userId)
+        {
+            var result = await _userBL.ApproveProjectManager(userId);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("reject/{userId}")]
+        public async Task<IActionResult> Reject(string userId)
+        {
+            var result = await _userBL.RejectProjectManager(userId);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("pending")]
+        public async Task<IActionResult> GetPendingProjectManagers()
+        {
+            var result = await _userBL.GetPendingProjectManagers();
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
     }
 }

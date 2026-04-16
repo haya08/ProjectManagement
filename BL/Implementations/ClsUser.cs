@@ -54,6 +54,18 @@ namespace ProjectManagement.BL.Implementations
                     StatusCode = "401" 
                 };
 
+            if (user.Status != "Approved")
+            {
+                return new ApiResponse
+                {
+                    StatusCode = "403",
+                    Errors = new List<object>
+                    {   
+                        new { Message = "Your account is not approved yet" }
+                    }
+                };
+            }
+
             // هنا هنولد JWT بعد كده
             var token = _JWT.GenerateToken(user);
 
@@ -79,21 +91,116 @@ namespace ProjectManagement.BL.Implementations
                 UserName = dto.Email,
                 Email = dto.Email,
                 FirstName = dto.FirstName,
-                LastName = dto.LastName
+                LastName = dto.LastName,
+                Status = "Pending"
             };
+
+            // a user cannot choose Admin
+            if (dto.Role == "Admin")
+            {
+                response.Errors.Add(new { Message = "Invalid role" });
+                response.StatusCode = "400";
+                return response;
+            }
 
             var result = await _userManager.CreateAsync(user, dto.Password);
 
             if (!result.Succeeded)
             {
-                response.Errors = new List<object>(result.Errors.Select(e => e.Description).ToList());
+                response.Errors = result.Errors.Select(e => (object)e.Description).ToList();
                 response.StatusCode = "400";
                 return response;
             }
 
+            // assign role
+            await _userManager.AddToRoleAsync(user, dto.Role);
+
+            // ProjectManager is Pending
+            if (dto.Role == "Project Manager")
+            {
+                user.Status = "Pending";
+            }
+            else
+            {
+                user.Status = "Approved"; // TeamMember مثلاً يدخل علطول
+            }
+
+            await _userManager.UpdateAsync(user);
+
             response.Data = "User created";
             response.StatusCode = "201";
             return response;
+        }
+
+        public async Task<ApiResponse> ApproveProjectManager(string userId)
+        {
+            var result = new ApiResponse();
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                result.Errors.Add(new { Message = "User not found" });
+                result.StatusCode = "404";
+                return result;
+            }
+
+            if (!await _userManager.IsInRoleAsync(user, "Project Manager"))
+            {
+                result.Errors.Add(new { Message = "User is not a Project Manager" });
+                result.StatusCode = "400";
+                return result;
+            }
+
+            user.Status = "Approved";
+            await _userManager.UpdateAsync(user);
+
+            result.StatusCode = "200";
+            result.Data = new { Message = "Project Manager approved" };
+
+            return result;
+        }
+
+        public async Task<ApiResponse> RejectProjectManager(string userId)
+        {
+            var result = new ApiResponse();
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                result.Errors.Add(new { Message = "User not found" });
+                result.StatusCode = "404";
+                return result;
+            }
+
+            user.Status = "Rejected";
+            await _userManager.UpdateAsync(user);
+
+            result.StatusCode = "200";
+            result.Data = new { Message = "Project Manager rejected" };
+
+            return result;
+        }
+
+        public async Task<ApiResponse> GetPendingProjectManagers()
+        {
+            var users = await _userManager.GetUsersInRoleAsync("Project Manager");
+
+            var pending = users
+                .Where(u => u.Status == "Pending")
+                .Select(u => new UserDTO
+                {
+                    Id = u.Id,
+                    Email = u.Email,
+                    Name = u.FirstName + " " + u.LastName
+                });
+
+            return new ApiResponse
+            {
+                Data = pending,
+                StatusCode = "200"
+            };
         }
     }
 }
