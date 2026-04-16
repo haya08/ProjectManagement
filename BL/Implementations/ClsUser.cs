@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
@@ -7,12 +8,15 @@ using ProjectManagement.Models;
 
 namespace ProjectManagement.BL.Implementations
 {
+    [Authorize]
     public class ClsUser : IUser
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        public ClsUser(UserManager<ApplicationUser> userManager)
+        private readonly IJWT _JWT;
+        public ClsUser(UserManager<ApplicationUser> userManager, IJWT jWT)
         {
             _userManager = userManager;
+            _JWT = jWT;
         }
 
         public async Task<ApiResponse> GetCurrentUser(string userId)
@@ -31,6 +35,7 @@ namespace ProjectManagement.BL.Implementations
             };
         }
 
+        [AllowAnonymous]
         public async Task<ApiResponse> Login(LoginDTO dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
@@ -41,16 +46,30 @@ namespace ProjectManagement.BL.Implementations
             var valid = await _userManager.CheckPasswordAsync(user, dto.Password);
 
             if (!valid)
-                return new ApiResponse { StatusCode = "401" };
+                return new ApiResponse { 
+                    Errors = new List<object>
+                    {
+                        new { Field = "password", Message = "Invalid password" }
+                    },
+                    StatusCode = "401" 
+                };
 
             // هنا هنولد JWT بعد كده
+            var token = _JWT.GenerateToken(user);
+
             return new ApiResponse
             {
-                Data = user,
+                Data = new
+                {
+                    token = token,
+                    userId = user.Id,
+                    email = user.Email
+                },
                 StatusCode = "200"
             };
         }
 
+        [AllowAnonymous]
         public async Task<ApiResponse> Register(RegisterDTO dto)
         {
             var response = new ApiResponse();

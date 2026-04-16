@@ -10,8 +10,6 @@ namespace ProjectManagement.DTOs.Tasks
         [Required]
         public int ProjectId { get; set; }
         [Required]
-        public string? AssignedTo { get; set; }
-        [Required]
         public DateTime DueDate { get; set; }
         [Required]
         public string Priority { get; set; }

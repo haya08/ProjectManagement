@@ -16,7 +16,7 @@ public partial class TbProject
     public DateTime? CreatedAt { get; set; }
 
     public virtual ApplicationUser? CreatedByNavigation { get; set; }
-    public virtual ICollection<TbProjectMember> TbProjectMembers { get; set; } = new List<TbProjectMember>();
+    public virtual ICollection<TbProjectMember> TbProjectMembers { get; set; }
 
-    public virtual ICollection<TbTask> TbTasks { get; set; } = new List<TbTask>();
+    public virtual ICollection<TbTask> TbTasks { get; set; }
 }

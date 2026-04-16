@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ProjectManagement.BL.Implementations;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
@@ -10,6 +11,7 @@ namespace ProjectManagement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TaskController : ControllerBase
     {
         private readonly ITask _taskBL;
@@ -45,7 +47,8 @@ namespace ProjectManagement.Controllers
 
         // POST api/<TaskController>
         [HttpPost]
-        public IActionResult Post([FromBody] CreateTaskDTO task)
+        [Authorize(Roles = "Admin, ProjectManager")]
+        public async Task<IActionResult> Post([FromBody] CreateTaskDTO task)
         {
             if (!ModelState.IsValid)
             {
@@ -57,14 +60,14 @@ namespace ProjectManagement.Controllers
                 };
                 return StatusCode(int.Parse(result.StatusCode), result);
             }
-            var response = _taskBL.CreateTask(task);
+            var response = await _taskBL.CreateTaskAsync(task);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
         // POST api/<TaskController>
         [HttpPost]
         [Route("Update")]
-        public IActionResult Update([FromBody] UpdateTaskDTO task)
+        public async Task<IActionResult> UpdateAsync([FromBody] UpdateTaskDTO task)
         {
             if (!ModelState.IsValid)
             {
@@ -76,17 +79,26 @@ namespace ProjectManagement.Controllers
                 };
                 return StatusCode(int.Parse(result.StatusCode), result);
             }
-            var response = _taskBL.UpdateTask(task);
+            var response = await _taskBL.UpdateTaskAsync(task);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
         // POST api/<TaskController>
         [HttpPost]
         [Route("Delete")]
+        [Authorize(Roles = "Admin")]
         public IActionResult Delete([FromBody] int id)
         {
             var response = _taskBL.DeleteTask(id);
             return StatusCode(int.Parse(response.StatusCode), response);
+        }
+
+        [Authorize]
+        [HttpPost("assign")]
+        public async Task<IActionResult> AssignTask([FromBody] AssignTaskDTO dto)
+        {
+            var result = await _taskBL.AssignTaskAsync(dto);
+            return StatusCode(int.Parse(result.StatusCode), result);
         }
     }
 }

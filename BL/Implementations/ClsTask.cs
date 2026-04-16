@@ -1,9 +1,12 @@
-﻿using ProjectManagement.BL.Interfaces;
+﻿using Microsoft.AspNetCore.SignalR;
+using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.TaskHistory;
 using ProjectManagement.DTOs.Tasks;
+using ProjectManagement.Hubs;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
+using System.Security.Claims;
 
 namespace ProjectManagement.BL.Implementations
 {
@@ -11,11 +14,23 @@ namespace ProjectManagement.BL.Implementations
     {
         private readonly ITaskRepository _repo;
         private readonly ITaskHistory _history;
+        private readonly IProjectMemberRepository _projectMemberRepo;
+        private readonly IHttpContextAccessor _httpContext;
+        private readonly IHubContext<NotificationHub> _hub;
+        private readonly INotificationRepository _notificationRepo;
 
-        public ClsTask(ITaskRepository repo, ITaskHistory history)
+        public ClsTask(ITaskRepository repo, ITaskHistory history,
+            IHttpContextAccessor httpContext,
+            IProjectMemberRepository projectMemberRepo,
+            IHubContext<NotificationHub> hub,
+            INotificationRepository notificationRepo)
         {
             _repo = repo;
             _history = history;
+            _httpContext = httpContext;
+            _projectMemberRepo = projectMemberRepo;
+            _hub = hub;
+            _notificationRepo = notificationRepo;
         }
 
         public ApiResponse GetAllTasks(TaskQueryDTO query)
@@ -109,13 +124,43 @@ namespace ProjectManagement.BL.Implementations
             }
         }
 
-        public ApiResponse CreateTask(CreateTaskDTO dto)
+        public async Task<ApiResponse> CreateTaskAsync(CreateTaskDTO dto)
         {
             var result = new ApiResponse();
             try
             {
                 // validations
 
+                var user = _httpContext.HttpContext.User;
+                var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // a team member cannot create a task
+                if (user.IsInRole("TeamMember"))
+                {
+                    result.Errors.Add(new
+                    {
+                        Field = "User",
+                        Message = "You are not allowed to create tasks"
+                    });
+                    result.StatusCode = "403";
+                    return result;
+                }
+
+                // a project manager can only create tasks in their projects
+                if(user.IsInRole("ProjectManager"))
+                {
+                    var isMember = _projectMemberRepo.GetByUserAndProject(userId, dto.ProjectId);
+                    if (isMember == null)
+                    {
+                        result.Errors.Add(new
+                        {
+                            Field = "User",
+                            Message = "You can only create tasks in your projects"
+                        });
+                        result.StatusCode = "403";
+                        return result;
+                    }
+                }
 
                 // Title required
                 if (string.IsNullOrWhiteSpace(dto.Title))
@@ -180,7 +225,6 @@ namespace ProjectManagement.BL.Implementations
                     Title = dto.Title,
                     Description = dto.Description,
                     ProjectId = dto.ProjectId,
-                    AssignedTo = dto.AssignedTo,
                     DueDate = dto.DueDate,
                     Priority = dto.Priority,
                     Status = "todo"
@@ -210,202 +254,275 @@ namespace ProjectManagement.BL.Implementations
             }
         }
 
-        public ApiResponse UpdateTask(UpdateTaskDTO dto)
+        private void ValidateTaskExists(TbTask task, ApiResponse result)
         {
-            var result = new ApiResponse();
-            try
+            if (task == null)
             {
+                result.Errors.Add(new
+                {
+                    Field = "Id",
+                    Message = "Task not found"
+                });
+                result.StatusCode = "404";
+            }
+        }
 
-                // validations
+        private void ValidatePermissions(ClaimsPrincipal user, string userId, TbTask task, ApiResponse result)
+        {
+            // TeamMember → فقط assigned task
+            if (user.IsInRole("TeamMember") && task.AssignedTo != userId)
+            {
+                result.Errors.Add(new
+                {
+                    Field = "User",
+                    Message = "You can only update tasks assigned to you"
+                });
+                result.StatusCode = "403";
+                return;
+            }
 
-                // Task must exist
-                var task = _repo.GetById(dto.Id);
+            // ProjectManager → لازم يكون عضو في المشروع
+            if (user.IsInRole("ProjectManager"))
+            {
+                var isMember = _projectMemberRepo.GetByUserAndProject(userId, (int)task.ProjectId);
 
-                if (task == null)
+                if (isMember == null)
                 {
                     result.Errors.Add(new
                     {
-                        Field = "Id",
-                        Message = "Task not found"
+                        Field = "User",
+                        Message = "You can only update tasks in your projects"
                     });
-                    return result;
+                    result.StatusCode = "403";
+                }
+            }
+        }
+
+        private void ValidateBusinessRules(ClaimsPrincipal user, UpdateTaskDTO dto, TbTask task, ApiResponse result)
+        {
+            // Title
+            if (dto.Title != null && string.IsNullOrWhiteSpace(dto.Title))
+            {
+                result.Errors.Add(new { Field = "Title", Message = "Title cannot be empty" });
+            }
+
+            // Priority
+            if (dto.Priority != null && dto.Priority != task.Priority)
+            {
+                if (user.IsInRole("TeamMember"))
+                {
+                    result.Errors.Add(new { Field = "Priority", Message = "Not allowed" });
+                    return;
                 }
 
-                // Title cannot be empty if provided
-                if (dto.Title != null)
+                if (!IsValidPriority(dto.Priority))
                 {
-                    if(string.IsNullOrWhiteSpace(dto.Title))
-                    {
-                        result.Errors.Add(new
-                        {
-                            Field = "Title",
-                            Message = "Title cannot be empty"
-                        });
-                    }
+                    result.Errors.Add(new { Field = "Priority", Message = "Invalid priority" });
+                }
+            }
+
+            // DueDate
+            if (dto.DueDate.HasValue)
+            {
+                if (user.IsInRole("TeamMember") && dto.DueDate != task.DueDate)
+                {
+                    result.Errors.Add(new { Field = "DueDate", Message = "Not allowed" });
                 }
 
-                // array for all history changes to be added at the end of validations
-                var historyChanges = new List<CreateTaskHistoryDTO>();
-
-                // Priority check
-                var allowed = new[] { "low", "medium", "high" };
-                if (dto.Priority != null && dto.Priority != task.Priority)
+                if (dto.DueDate < DateTime.UtcNow)
                 {
-                    if (!allowed.Contains(dto.Priority.ToLower()))
-                    {
-                        result.Errors.Add(new
-                        {
-                            Field = "Priority",
-                            Message = "Invalid priority"
-                        });
-                    }
-                    else
-                    {
-                        // create TaskHistoryDTO
-                        var history = new CreateTaskHistoryDTO
-                        {
-                            TaskId = dto.Id,
-                            FieldChanged = "priority",
-                            OldValue = task.Priority,
-                            NewValue = dto.Priority,
-                            ChangedBy = task.CreatedBy
-                        };
-
-                        // add to historyChanges list
-                        historyChanges.Add(history);
-                    }
-                    
+                    result.Errors.Add(new { Field = "DueDate", Message = "Must be future" });
                 }
+            }
 
-                // DueDate must be in the future
-                if (dto.DueDate.HasValue)
+            // Status
+            if (!string.IsNullOrEmpty(dto.Status) && dto.Status != task.Status)
+            {
+                if (!IsValidStatusTransition(task.Status, dto.Status))
                 {
-                    if (dto.DueDate < DateTime.UtcNow)
+                    result.Errors.Add(new
                     {
-                        result.Errors.Add(new
-                        {
-                            Field = "DueDate",
-                            Message = "Due date must be in the future"
-                        });
-                    }
+                        Field = "Status",
+                        Message = $"Invalid transition from {task.Status} to {dto.Status}"
+                    });
                 }
+            }
+        }
 
-                // Status check
-                if (!string.IsNullOrEmpty(dto.Status) && dto.Status != task.Status)
+        private List<CreateTaskHistoryDTO> BuildHistory(TbTask task, UpdateTaskDTO dto, string userId)
+        {
+            var history = new List<CreateTaskHistoryDTO>();
+
+            void Add(string field, string oldVal, string newVal)
+            {
+                history.Add(new CreateTaskHistoryDTO
                 {
-                    var validTransitions = new Dictionary<string, string[]>
-                    {
-                        { "todo", new[] { "in_progress" } },
-                        { "in_progress", new[] { "done" } },
-                        { "done", new string[] { } }
-                    };
+                    TaskId = task.Id,
+                    FieldChanged = field,
+                    OldValue = oldVal,
+                    NewValue = newVal,
+                    ChangedBy = userId
+                });
+            }
 
-                    var current = task.Status?.ToLower();
-                    var next = dto.Status.ToLower();
+            if (dto.Priority != null && dto.Priority != task.Priority)
+                Add("priority", task.Priority, dto.Priority);
 
-                    if (!validTransitions.ContainsKey(current) ||
-                        !validTransitions[current].Contains(next))
-                    {
-                        result.Errors.Add(new
-                        {
-                            Field = "Status",
-                            Message = $"Invalid status transition from {current} to {next}"
-                        });
-                    }
+            if (dto.Status != null && dto.Status != task.Status)
+                Add("status", task.Status, dto.Status);
 
-                    // assigned_to check: if status is changing to in_progress, dto.assigned_to cannot be null
-                    if(next == "in_progress" && string.IsNullOrEmpty(dto.AssignedTo))
-                    {
-                        result.Errors.Add(new
-                        {
-                            Field = "AssignedTo",
-                            Message = "AssignedTo is required when status is changed to in_progress"
-                        });
-                    }
+            if (dto.Title != null && dto.Title != task.Title)
+                Add("title", task.Title, dto.Title);
 
-                    // assigned_to check: if status is changing to done, assigned_to cannot be changing
-                    if(next == "done" && !string.IsNullOrEmpty(dto.AssignedTo) && dto.AssignedTo != task.AssignedTo)
-                    {
-                        result.Errors.Add(new
-                        {
-                            Field = "AssignedTo",
-                            Message = "AssignedTo cannot be changed when status is changed to done"
-                        });
-                    }
+            return history;
+        }
 
-                    // create TaskHistoryDTO
-                    var history = new CreateTaskHistoryDTO
-                    {
-                        TaskId = dto.Id,
-                        FieldChanged = "status",
-                        OldValue = task.Status,
-                        NewValue = dto.Status,
-                        ChangedBy = task.CreatedBy
-                    };
+        private void ApplyUpdates(TbTask task, UpdateTaskDTO dto)
+        {
+            if (dto.Title != null) task.Title = dto.Title;
+            if (dto.Description != null) task.Description = dto.Description;
+            if (dto.Status != null) task.Status = dto.Status;
+            if (dto.Priority != null) task.Priority = dto.Priority;
+            if (dto.DueDate.HasValue) task.DueDate = dto.DueDate;
 
-                    // add to historyChanges list
-                    historyChanges.Add(history);
-                }
+            task.UpdatedAt = DateTime.UtcNow;
+        }
 
-                // AssignedTo check
-                if (!string.IsNullOrEmpty(dto.AssignedTo) && dto.AssignedTo != task.AssignedTo)
+        private void SaveHistory(List<CreateTaskHistoryDTO> changes)
+        {
+            foreach (var change in changes)
+            {
+                _history.AddHistory(change);
+            }
+        }
+
+        private bool IsValidPriority(string p)
+        {
+            return new[] { "low", "medium", "high" }.Contains(p.ToLower());
+        }
+
+        private bool IsValidStatusTransition(string current, string next)
+        {
+            var transitions = new Dictionary<string, string[]>
+            {
+                { "todo", new[] { "in_progress" } },
+                { "in_progress", new[] { "done" } },
+                { "done", new string[] { } }
+            };
+
+            return transitions.ContainsKey(current.ToLower()) &&
+                   transitions[current.ToLower()].Contains(next.ToLower());
+        }
+
+        private TasksDTO MapToDTO(TbTask task)
+        {
+            return new TasksDTO
+            {
+                Id = task.Id,
+                Title = task.Title,
+                Status = task.Status,
+                Priority = task.Priority,
+                AssignedUserName = task.AssignedToNavigation?.UserName,
+                DueDate = task.DueDate
+            };
+        }
+
+        private TbNotification BuildNotification(TbTask task, string message)
+        {
+            return new TbNotification
+            {
+                UserId = task.AssignedTo,
+                Message = message,
+                Type = "task",
+                CreatedAt = DateTime.UtcNow
+            };
+        }
+
+        private async Task SendRealtimeNotification(string userId, string message, int taskId)
+        {
+            await _hub.Clients.User(userId)
+                .SendAsync("ReceiveNotification", new
                 {
-                    // create TaskHistoryDTO
-                    var history = new CreateTaskHistoryDTO
-                    {
-                        TaskId = dto.Id,
-                        FieldChanged = "assigned_to",
-                        OldValue = task.AssignedTo?.ToString(),
-                        NewValue = dto.AssignedTo?.ToString(),
-                        ChangedBy = task.CreatedBy
-                    };
+                    Message = message,
+                    TaskId = taskId
+                });
+        }
 
-                    // add to historyChanges list
-                    historyChanges.Add(history);
-                }
+        private string BuildUpdateMessage(dynamic task, UpdateTaskDTO dto)
+        {
+            if (dto.Status != null && dto.Status != task.Status)
+                return $"Task '{task.Title}' status updated to {dto.Status}";
 
-                if (result.Errors.Count > 0)
+            if (dto.Priority != null && dto.Priority != task.Priority)
+                return $"Task '{task.Title}' priority changed to {dto.Priority}";
+
+            return $"Task '{task.Title}' has been updated";
+        }
+
+        public async Task<ApiResponse> UpdateTaskAsync(UpdateTaskDTO dto)
+        {
+            var result = new ApiResponse();
+
+            try
+            {
+                var task = _repo.GetById(dto.Id);
+
+                ValidateTaskExists(task, result);
+                if (result.Errors.Any()) return result;
+
+                var user = _httpContext.HttpContext.User;
+
+                var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                ValidatePermissions(user, userId, task, result);
+                ValidateBusinessRules(user, dto, task, result);
+
+                if (result.Errors.Any())
                 {
-                    result.Data = null;
                     result.StatusCode = "400";
                     return result;
                 }
 
-                if (dto.Title != null) task.Title = dto.Title;
-                if (dto.Description != null) task.Description = dto.Description;
-                if (dto.Status != null) task.Status = dto.Status;
-                if (dto.Priority != null) task.Priority = dto.Priority;
-                if (dto.DueDate.HasValue) task.DueDate = dto.DueDate;
+                var history = BuildHistory(task, dto, userId);
 
-                // save history changes
-                foreach (var change in historyChanges)
+                var oldTask = new
                 {
-                    _history.AddHistory(change);
-                }
+                    task.Status,
+                    task.Priority,
+                    task.Title
+                };
+
+                ApplyUpdates(task, dto);
+
+                SaveHistory(history);
 
                 _repo.Update(task);
                 _repo.Save();
 
-                result.Data = new TasksDTO
-                {
-                    Id = task.Id,
-                    Title = task.Title,
-                    Status = task.Status,
-                    Priority = task.Priority,
-                    AssignedUserName = task.AssignedToNavigation?.UserName,
-                    DueDate = task.DueDate
-                };
+                // message ديناميك
+                var message = BuildUpdateMessage(oldTask, dto);
 
+                // save notification in DB
+                var notification = BuildNotification(task, message);
+                _notificationRepo.Add(notification);
+                _notificationRepo.Save();
+
+                // send real-time
+                await SendRealtimeNotification(userId, message, task.Id);
+
+                result.Data = MapToDTO(task);
                 result.StatusCode = "200";
 
                 return result;
             }
             catch (Exception ex)
             {
-                result.Data = null;
-                result.Errors.Add(new { Exception = ex.Message });
-                result.StatusCode = "500";
-                return result;
+                return new ApiResponse
+                {
+                    Data = null,
+                    Errors = new List<object> { new { Exception = ex.Message } },
+                    StatusCode = "500"
+                };
             }
         }
 
@@ -416,11 +533,38 @@ namespace ProjectManagement.BL.Implementations
             {
                 // Task must exist
                 var task = _repo.GetById(id);
-                if (task == null)
+                ValidateTaskExists(task, result);
+                if(result.Errors.Any()) return result;
+
+                // Only Admin or PM can delete
+                var user = _httpContext.HttpContext.User;
+                var userId = _httpContext.HttpContext.User
+                    .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (user.IsInRole("TeamMember"))
                 {
-                    result.Errors.Add(new { Message = "Task not found" });
-                    result.StatusCode = "404";
+                    result.Errors.Add(new
+                    {
+                        Field = "User",
+                        Message = "You are not allowed to delete tasks"
+                    });
+                    result.StatusCode = "403";
                     return result;
+                }
+
+                if(user.IsInRole("ProjectManager"))
+                {
+                    var isMember = _projectMemberRepo.GetByUserAndProject(userId, (int)task.ProjectId);
+                    if (isMember == null)
+                    {
+                        result.Errors.Add(new
+                        {
+                            Field = "User",
+                            Message = "You can only delete tasks in your projects"
+                        });
+                        result.StatusCode = "403";
+                        return result;
+                    }
                 }
 
                 _repo.Delete(task);
@@ -436,6 +580,112 @@ namespace ProjectManagement.BL.Implementations
                 result.Errors.Add(new { Exception = ex.Message });
                 result.StatusCode = "500";
                 return result;
+            }
+        }
+
+        public async Task<ApiResponse> AssignTaskAsync(AssignTaskDTO dto)
+        {
+            var result = new ApiResponse();
+            try
+            {
+                // check task exists
+                var task = _repo.GetById(dto.TaskId);
+
+                ValidateTaskExists(task, result);
+                if (result.Errors.Any()) return result;
+
+                var user = _httpContext.HttpContext.User;
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                // check current user is member in project
+                var currentMember = _projectMemberRepo
+                    .GetByUserAndProject(userId, (int)task.ProjectId);
+
+                if (currentMember == null)
+                {
+                    result.StatusCode = "403";
+                    result.Errors.Add(new { Message = "Not part of project" });
+                    return result;
+                }
+
+                // check permission (only PM or Admin)
+
+                if (!user.IsInRole("Admin") && !user.IsInRole("Project Manager"))
+                {
+                    result.StatusCode = "403";
+                    result.Errors.Add(new { Message = "Not allowed to assign tasks" });
+                    return result;
+                }
+
+                // check assigned user is member
+                var assignedMember = _projectMemberRepo
+                    .GetByUserAndProject(dto.AssignedTo, (int)task.ProjectId);
+
+                if (assignedMember == null)
+                {
+                    result.StatusCode = "400";
+                    result.Errors.Add(new { Message = "User not in project" });
+                    return result;
+                }
+
+                // cannot assign if task is done
+                if (task.Status == "done")
+                {
+                    result.StatusCode = "400";
+                    result.Errors.Add(new { Message = "Cannot assign task that is done" });
+                    return result;
+                }
+
+                //  assign
+                var oldAssigned = task.AssignedTo;
+                task.AssignedTo = dto.AssignedTo;
+
+                // auto move status
+                if (task.Status == "todo")
+                    task.Status = "in_progress";
+
+                // add history
+                var changes = new List<CreateTaskHistoryDTO>();
+                changes.Add(new CreateTaskHistoryDTO
+                {
+                    TaskId = task.Id,
+                    FieldChanged = "assigned_to",
+                    OldValue = oldAssigned,
+                    NewValue = dto.AssignedTo,
+                    ChangedBy = userId
+                });
+                SaveHistory(changes);
+
+                // save notification in DB
+                var message = $"You have been assigned a new task: {task.Title}";
+
+                var notification = BuildNotification(task, message);
+                _notificationRepo.Add(notification);
+                _notificationRepo.Save();
+
+                await SendRealtimeNotification(dto.AssignedTo, message, task.Id);
+
+                _repo.Update(task);
+                _repo.Save();
+
+                result.StatusCode = "200";
+                result.Data = new
+                {
+                    TaskId = task.Id,
+                    AssignedTo = dto.AssignedTo,
+                    Status = task.Status
+                };
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse
+                {
+                    Data = null,
+                    Errors = new List<object> { new { Exception = ex.Message } },
+                    StatusCode = "500"
+                };
             }
         }
     }
