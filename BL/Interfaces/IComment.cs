@@ -6,7 +6,7 @@ namespace ProjectManagement.BL.Interfaces
     public interface IComment
     {
         ApiResponse GetByTaskId(int taskId);
-        ApiResponse AddComment(int taskId, string userId, CreateCommentDTO dto);
+        Task<ApiResponse> AddCommentAsync(int taskId, string userId, CreateCommentDTO dto);
         ApiResponse DeleteComment(int commentId, string userId, string role);
     }
 }

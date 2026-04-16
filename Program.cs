@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ProjectManagement.BL.Implementations;
 using ProjectManagement.BL.Interfaces;
+using ProjectManagement.Hubs;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Implementations;
 using ProjectManagement.Repositories.Interfaces;
@@ -34,6 +35,9 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 
 }).AddEntityFrameworkStores<ProjectManagementContext>();
 
+// signalR
+builder.Services.AddSignalR();
+
 // dependency injection
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<ITask, ClsTask>();
@@ -47,6 +51,8 @@ builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IProject, ClsProject>();
 builder.Services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
 builder.Services.AddScoped<IProjectMembers, ClsProjectMembers>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<INotification, ClsNotification>();
 builder.Services.AddScoped<IUser, ClsUser>();
 builder.Services.AddScoped<IJWT, ClsJWT>();
 builder.Services.AddHttpContextAccessor();
@@ -93,5 +99,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.UseStaticFiles();
+
+app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();

@@ -31,11 +31,11 @@ namespace ProjectManagement.Controllers
 
         // POST
         [HttpPost]
-        public IActionResult AddComment(int taskId, CreateCommentDTO dto)
+        public async Task<IActionResult> AddCommentAsync(int taskId, CreateCommentDTO dto)
         {
             var userId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var result = _commentBL.AddComment(taskId, userId, dto);
+            var result = await _commentBL.AddCommentAsync(taskId, userId, dto);
 
             return StatusCode(int.Parse(result.StatusCode), result);
         }

@@ -8,9 +8,9 @@ namespace ProjectManagement.BL.Interfaces
         public ApiResponse GetAllTasks(TaskQueryDTO query);
         public ApiResponse GetTaskById(int id);
         public List<TasksDTO> GetTasksByProjectId(int id);
-        public ApiResponse CreateTask(CreateTaskDTO dto);
-        public ApiResponse UpdateTask(UpdateTaskDTO dto);
+        public Task<ApiResponse> CreateTaskAsync(CreateTaskDTO dto);
+        public Task<ApiResponse> UpdateTaskAsync(UpdateTaskDTO dto);
         public ApiResponse DeleteTask(int id);
-        public ApiResponse AssignTask(AssignTaskDTO dto);
+        public Task<ApiResponse> AssignTaskAsync(AssignTaskDTO dto);
     }
 }

@@ -48,7 +48,7 @@ namespace ProjectManagement.Controllers
         // POST api/<TaskController>
         [HttpPost]
         [Authorize(Roles = "Admin, ProjectManager")]
-        public IActionResult Post([FromBody] CreateTaskDTO task)
+        public async Task<IActionResult> Post([FromBody] CreateTaskDTO task)
         {
             if (!ModelState.IsValid)
             {
@@ -60,14 +60,14 @@ namespace ProjectManagement.Controllers
                 };
                 return StatusCode(int.Parse(result.StatusCode), result);
             }
-            var response = _taskBL.CreateTask(task);
+            var response = await _taskBL.CreateTaskAsync(task);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
         // POST api/<TaskController>
         [HttpPost]
         [Route("Update")]
-        public IActionResult Update([FromBody] UpdateTaskDTO task)
+        public async Task<IActionResult> UpdateAsync([FromBody] UpdateTaskDTO task)
         {
             if (!ModelState.IsValid)
             {
@@ -79,7 +79,7 @@ namespace ProjectManagement.Controllers
                 };
                 return StatusCode(int.Parse(result.StatusCode), result);
             }
-            var response = _taskBL.UpdateTask(task);
+            var response = await _taskBL.UpdateTaskAsync(task);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
@@ -95,9 +95,9 @@ namespace ProjectManagement.Controllers
 
         [Authorize]
         [HttpPost("assign")]
-        public IActionResult AssignTask([FromBody] AssignTaskDTO dto)
+        public async Task<IActionResult> AssignTask([FromBody] AssignTaskDTO dto)
         {
-            var result = _taskBL.AssignTask(dto);
+            var result = await _taskBL.AssignTaskAsync(dto);
             return StatusCode(int.Parse(result.StatusCode), result);
         }
     }
