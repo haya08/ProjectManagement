@@ -16,15 +16,21 @@ namespace ProjectManagement.BL.Implementations
         private readonly IHttpContextAccessor _httpContext;
         private readonly IProjectMemberRepository _projectMemberRepo;
         private readonly ITaskRepository _taskRepo;
+        private readonly IProjectRepository _projectRepo;
+        private readonly IProjectMemberRepository _projectMemberRepository;
         public ClsProject(IProjectRepository repo, 
             IHttpContextAccessor httpContext, 
             IProjectMemberRepository projectMemberRepo,
-            ITaskRepository taskRepo)
+            ITaskRepository taskRepo,
+            IProjectRepository projectRepo,
+            IProjectMemberRepository projectMemberRepository)
         {
             _repo = repo;
             _httpContext = httpContext;
             _projectMemberRepo = projectMemberRepo;
             _taskRepo = taskRepo;
+            _projectRepo = projectRepo;
+            _projectMemberRepository = projectMemberRepository;
         }
 
         public ApiResponse GetAll()
@@ -98,7 +104,7 @@ namespace ProjectManagement.BL.Implementations
             var user = _httpContext.HttpContext.User;
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // user should be a project manager
+            // if the user is a project manager, check if they are a member of the project
             if (user.IsInRole("Project Manager"))
             {
                 var isMember = _projectMemberRepo.GetByUserAndProject(userId, projectId);
@@ -127,6 +133,7 @@ namespace ProjectManagement.BL.Implementations
                     TotalTasks = 0,
                     DoneTasks = 0,
                     TodoTasks = 0,
+                    OverDueTasks = 0,
                     InProgressTasks = 0,
                     ProgressPercentage = 0
                 };
@@ -138,6 +145,7 @@ namespace ProjectManagement.BL.Implementations
             var done = tasks.Count(t => t.Status.ToLower() == "done");
             var todo = tasks.Count(t => t.Status.ToLower() == "todo");
             var inProgress = tasks.Count(t => t.Status.ToLower() == "in_progress");
+            var overDue = tasks.Count(t => t.DueDate < DateTime.UtcNow && t.Status.ToLower() != "done");
 
             var progress = (double)done / total * 100;
 
@@ -146,6 +154,7 @@ namespace ProjectManagement.BL.Implementations
                 TotalTasks = total,
                 DoneTasks = done,
                 TodoTasks = todo,
+                OverDueTasks = overDue,
                 InProgressTasks = inProgress,
                 ProgressPercentage = Math.Round(progress, 2)
             };
@@ -154,18 +163,91 @@ namespace ProjectManagement.BL.Implementations
             return result;
         }
 
+        public ApiResponse GetProjectDashboard(int projectId)
+        {
+            var result = new ApiResponse();
+
+            var user = _httpContext.HttpContext.User;
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Authorization
+            var isMember = _projectMemberRepo.GetByUserAndProject(userId, projectId);
+            if (isMember == null && !user.IsInRole("Admin"))
+            {
+                result.StatusCode = "403";
+                result.Errors.Add(new { Message = "Access denied" });
+                return result;
+            }
+
+            // Project
+            var project = _projectRepo.GetById(projectId);
+
+            // Tasks
+            var tasks = _taskRepo.GetByProjectId(projectId);
+
+            // Members
+            var members = _projectMemberRepo.GetByProjectId(projectId);
+
+            // Stats
+            var total = tasks.Count;
+            var done = tasks.Count(t => t.Status == "done");
+            var todo = tasks.Count(t => t.Status == "todo");
+            var inProgress = tasks.Count(t => t.Status == "in_progress");
+            var overDue = tasks.Count(t => t.DueDate < DateTime.UtcNow && t.Status != "done");
+            var progress = total == 0 ? 0 : (double)done / total * 100;
+
+            var dashboard = new ProjectDashboardDTO
+            {
+                Project = new ProjectsDTO
+                {
+                    Id = project.Id,
+                    Name = project.Name,
+                    Description = project.Description,
+                    CreatedAt = project.CreatedAt
+                },
+
+                Tasks = tasks.Select(t => new TasksDTO
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Status = t.Status,
+                    Priority = t.Priority
+                }).ToList(),
+
+                Members = members.Select(m => new ProjectMemberDTO
+                {
+                    UserId = m.UserId,
+                    UserName = m.User?.UserName,
+                    Role = m.Role
+                }).ToList(),
+
+                Stats = new ProjectStatsDTO
+                {
+                    TotalTasks = total,
+                    DoneTasks = done,
+                    TodoTasks = todo,
+                    InProgressTasks = inProgress,
+                    OverDueTasks = overDue,
+                    ProgressPercentage = Math.Round(progress, 2)
+                }
+            };
+
+            result.Data = dashboard;
+            result.StatusCode = "200";
+
+            return result;
+        }
+
         public ApiResponse GetProjectDetails(int projectId)
         {
             var result = new ApiResponse();
 
-            var userId = _httpContext.HttpContext.User
-                .FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = _httpContext.HttpContext.User;
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // check membership
-            var membership = _projectMemberRepo
-                .GetByUserAndProject(userId, projectId);
-
-            if (membership == null)
+            // Authorization
+            var isMember = _projectMemberRepo.GetByUserAndProject(userId, projectId);
+            if (isMember == null && !user.IsInRole("Admin"))
             {
                 result.StatusCode = "403";
                 result.Errors.Add(new { Message = "Access denied" });

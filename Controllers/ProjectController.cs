@@ -10,7 +10,7 @@ namespace ProjectManagement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] 
+    [Authorize]
     public class ProjectController : ControllerBase
     {
         private readonly IProject _projectBL;
@@ -45,6 +45,13 @@ namespace ProjectManagement.Controllers
         public IActionResult GetProjectDetails(int id)
         {
             var result = _projectBL.GetProjectDetails(id);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [HttpGet("{id}/dashboard")]
+        public IActionResult GetDashboard(int id)
+        {
+            var result = _projectBL.GetProjectDashboard(id);
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 

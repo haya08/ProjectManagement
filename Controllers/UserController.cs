@@ -66,5 +66,37 @@ namespace ProjectManagement.Controllers
             var result = await _userBL.GetPendingProjectManagers();
             return StatusCode(int.Parse(result.StatusCode), result);
         }
+
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var result = await _userBL.GetMyProfile();
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize]
+        [HttpPut("me")]
+        public async Task<IActionResult> UpdateProfile(UpdateProfileDTO dto)
+        {
+            var result = await _userBL.UpdateProfile(dto);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDTO dto)
+        {
+            var result = await _userBL.ChangePassword(dto);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize]
+        [HttpPost("upload-image")]
+        public async Task<IActionResult> UploadImage([FromForm] IFormFile file)
+        {
+            var result = await _userBL.UploadProfileImage(file);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
     }
 }

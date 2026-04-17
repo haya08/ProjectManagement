@@ -309,7 +309,7 @@ namespace ProjectManagement.BL.Implementations
             // Priority
             if (dto.Priority != null && dto.Priority != task.Priority)
             {
-                if (user.IsInRole("TeamMember"))
+                if (user.IsInRole("Team Member") && user.IsInRole("Admin"))
                 {
                     result.Errors.Add(new { Field = "Priority", Message = "Not allowed" });
                     return;
@@ -610,7 +610,7 @@ namespace ProjectManagement.BL.Implementations
 
                 // check permission (only PM or Admin)
 
-                if (!user.IsInRole("Admin") && !user.IsInRole("Project Manager"))
+                if (!user.IsInRole("Project Manager"))
                 {
                     result.StatusCode = "403";
                     result.Errors.Add(new { Message = "Not allowed to assign tasks" });

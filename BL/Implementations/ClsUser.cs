@@ -5,6 +5,7 @@ using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.Users;
 using ProjectManagement.Models;
+using System.Security.Claims;
 
 namespace ProjectManagement.BL.Implementations
 {
@@ -13,10 +14,17 @@ namespace ProjectManagement.BL.Implementations
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IJWT _JWT;
-        public ClsUser(UserManager<ApplicationUser> userManager, IJWT jWT)
+        private readonly IHttpContextAccessor _httpContext;
+        private readonly IWebHostEnvironment _env;
+        public ClsUser(UserManager<ApplicationUser> userManager,
+            IJWT jWT,
+            IHttpContextAccessor httpContext,
+            IWebHostEnvironment env)
         {
             _userManager = userManager;
             _JWT = jWT;
+            _httpContext = httpContext;
+            _env = env;
         }
 
         public async Task<ApiResponse> GetCurrentUser(string userId)
@@ -132,6 +140,16 @@ namespace ProjectManagement.BL.Implementations
             return response;
         }
 
+        public async Task<ApiResponse> LogOut()
+        {
+            // Since we're using JWT, logout is handled on the client side by deleting the token.
+            return new ApiResponse
+            {
+                Data = "Logged out",
+                StatusCode = "200"
+            };
+        }
+
         public async Task<ApiResponse> ApproveProjectManager(string userId)
         {
             var result = new ApiResponse();
@@ -201,6 +219,110 @@ namespace ProjectManagement.BL.Implementations
                 Data = pending,
                 StatusCode = "200"
             };
+        }
+
+        public async Task<ApiResponse> GetMyProfile()
+        {
+            var userId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            return new ApiResponse
+            {
+                Data = new UserDTO
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    Name = user.FirstName + " " + user.LastName
+                },
+                StatusCode = "200"
+            };
+        }
+
+        public async Task<ApiResponse> UpdateProfile(UpdateProfileDTO dto)
+        {
+            var result = new ApiResponse();
+
+            var userId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                result.StatusCode = "404";
+                result.Errors.Add(new { Message = "User not found" });
+                return result;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                user.FirstName = dto.Name;
+
+            if(!string.IsNullOrWhiteSpace(dto.Email))
+                user.Email = dto.Email;
+
+            await _userManager.UpdateAsync(user);
+
+            result.StatusCode = "200";
+            result.Data = "Profile updated";
+
+            return result;
+        }
+
+        public async Task<ApiResponse> ChangePassword(ChangePasswordDTO dto)
+        {
+            var result = new ApiResponse();
+
+            var userId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+
+            var changeResult = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+
+            if (!changeResult.Succeeded)
+            {
+                result.StatusCode = "400";
+                result.Errors = changeResult.Errors.Select(e => (object)e.Description).ToList();
+                return result;
+            }
+
+            result.StatusCode = "200";
+            result.Data = "Password changed successfully";
+
+            return result;
+        }
+
+        public async Task<ApiResponse> UploadProfileImage(IFormFile file)
+        {
+            var result = new ApiResponse();
+
+            if (file == null || file.Length == 0)
+            {
+                result.StatusCode = "400";
+                result.Errors.Add(new { Message = "File is required" });
+                return result;
+            }
+
+            var userId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+
+            var uploadsFolder = Path.Combine(_env.WebRootPath, "profiles");
+
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+            var path = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = new FileStream(path, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            user.ProfileImageUrl = "/profiles/" + fileName;
+            await _userManager.UpdateAsync(user);
+
+            result.StatusCode = "200";
+            result.Data = user.ProfileImageUrl;
+
+            return result;
         }
     }
 }

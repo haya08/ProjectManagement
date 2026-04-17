@@ -11,5 +11,9 @@ namespace ProjectManagement.BL.Interfaces
         Task<ApiResponse> ApproveProjectManager(string userId);
         Task<ApiResponse> RejectProjectManager(string userId);
         Task<ApiResponse> GetPendingProjectManagers();
+        Task<ApiResponse> GetMyProfile();
+        Task<ApiResponse> UpdateProfile(UpdateProfileDTO dto);
+        Task<ApiResponse> ChangePassword(ChangePasswordDTO dto);
+        Task<ApiResponse> UploadProfileImage(IFormFile file);
     }
 }
