@@ -3,8 +3,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
+using ProjectManagement.DTOs.Projects;
+using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.DTOs.Users;
 using ProjectManagement.Models;
+using ProjectManagement.Repositories.Interfaces;
 using System.Security.Claims;
 
 namespace ProjectManagement.BL.Implementations
@@ -16,15 +19,27 @@ namespace ProjectManagement.BL.Implementations
         private readonly IJWT _JWT;
         private readonly IHttpContextAccessor _httpContext;
         private readonly IWebHostEnvironment _env;
+        private readonly ITaskRepository _taskRepo;
+        private readonly IProjectRepository _projectRepo;
+        private readonly IProjectMemberRepository _projectMemberRepo;
+        private readonly RoleManager<IdentityRole> _roleManager;
         public ClsUser(UserManager<ApplicationUser> userManager,
             IJWT jWT,
             IHttpContextAccessor httpContext,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            ITaskRepository taskRepo,
+            IProjectMemberRepository projectMemberRepo,
+            IProjectRepository projectRepo,
+            RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
             _JWT = jWT;
             _httpContext = httpContext;
             _env = env;
+            _taskRepo = taskRepo;
+            _projectMemberRepo = projectMemberRepo;
+            _projectRepo = projectRepo;
+            _roleManager = roleManager;
         }
 
         public async Task<ApiResponse> GetCurrentUser(string userId)
@@ -321,6 +336,145 @@ namespace ProjectManagement.BL.Implementations
 
             result.StatusCode = "200";
             result.Data = user.ProfileImageUrl;
+
+            return result;
+        }
+
+        public ApiResponse GetUserDashboard()
+        {
+            var result = new ApiResponse();
+
+            var userId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Tasks
+            var tasks = _taskRepo.GetByUser(userId);
+
+            // Projects
+            var projectMembers = _projectMemberRepo.GetByUser(userId);
+            var projects = projectMembers.Select(pm => pm.Project).ToList();
+
+            // Stats
+            var total = tasks.Count;
+            var done = tasks.Count(t => t.Status == "done");
+            var inProgress = tasks.Count(t => t.Status == "in_progress");
+            var todo = tasks.Count(t => t.Status == "todo");
+            var overdue = tasks.Count(t => t.DueDate < DateTime.UtcNow && t.Status != "done");
+
+            var dashboard = new UserDashboardDTO
+            {
+                MyTasks = tasks.Select(t => new TasksDTO
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Status = t.Status,
+                    Priority = t.Priority
+                }).ToList(),
+
+                MyProjects = projects.Select(p => new ProjectsDTO
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    CreatedAt = p.CreatedAt
+                }).ToList(),
+
+                Stats = new UserStatsDTO
+                {
+                    TotalTasks = total,
+                    DoneTasks = done,
+                    InProgressTasks = inProgress,
+                    TodoTasks = todo,
+                    OverDueTasks = overdue
+                }
+            };
+
+            result.Data = dashboard;
+            result.StatusCode = "200";
+
+            return result;
+        }
+
+        public async Task<ApiResponse> GetAdminDashboard()
+        {
+            var result = new ApiResponse();
+
+            // Users
+            var users = _userManager.Users.ToList();
+            var totalUsers = users.Count;
+
+            var projectManagers = await _userManager.GetUsersInRoleAsync("Project Manager");
+
+            var pendingPM = projectManagers.Count(u => u.Status == "Pending");
+            var approvedPM = projectManagers.Count(u => u.Status == "Approved");
+
+            // Projects
+            var totalProjects = _projectRepo.GetAll().Count();
+
+            // Tasks
+            var tasks = _taskRepo.GetAll(new TaskQueryDTO());
+            var totalTasks = tasks.Count();
+
+            var doneTasks = tasks.Count(t => t.Status == "done");
+            var pendingTasks = tasks.Count(t => t.Status != "done");
+            var overdueTasks = tasks.Count(t => t.DueDate < DateTime.UtcNow && t.Status != "done");
+
+            // Progress
+            var progress = totalTasks == 0 ? 0 : (double)doneTasks / totalTasks * 100;
+
+            result.Data = new AdminDashboardDTO
+            {
+                TotalUsers = totalUsers,
+                TotalProjects = totalProjects,
+                TotalTasks = totalTasks,
+
+                TotalProjectManagers = projectManagers.Count,
+                PendingProjectManagers = pendingPM,
+                ApprovedProjectManagers = approvedPM,
+
+                DoneTasks = doneTasks,
+                PendingTasks = pendingTasks,
+                OverDueTasks = overdueTasks,
+
+                SystemProgress = Math.Round(progress, 2)
+            };
+
+            result.StatusCode = "200";
+            return result;
+        }
+
+        public async Task<ApiResponse> AssignRole(RoleDTO dto)
+        {
+            var result = new ApiResponse();
+
+            var user = await _userManager.FindByIdAsync(dto.UserId);
+
+            if (user == null)
+            {
+                result.StatusCode = "404";
+                result.Errors.Add(new { User = "User not found" });
+                return result;
+            }
+
+            var roleExists = await _roleManager.RoleExistsAsync(dto.Role);
+
+            if (!roleExists)
+            {
+                result.StatusCode = "400";
+                result.Errors.Add(new { Role = "Role does not exist" });
+                return result;
+            }
+
+            var addRoleResult = await _userManager.AddToRoleAsync(user, dto.Role);
+
+            if (!addRoleResult.Succeeded)
+            {
+                result.StatusCode = "400";
+                result.Errors = new List<object>(addRoleResult.Errors.Select(e => e.Description).ToList());
+                return result;
+            }
+
+            result.StatusCode = "200";
+            result.Data = "Role assigned successfully";
 
             return result;
         }

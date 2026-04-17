@@ -98,5 +98,45 @@ namespace ProjectManagement.Controllers
             var result = await _userBL.UploadProfileImage(file);
             return StatusCode(int.Parse(result.StatusCode), result);
         }
+
+        [Authorize]
+        [HttpGet("dashboard")]
+        public IActionResult GetDashboard()
+        {
+            var result = _userBL.GetUserDashboard();
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("adminDashboard")]
+        public async Task<IActionResult> GetAdminDashboard()
+        {
+            var result = await _userBL.GetAdminDashboard();
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("assign-role")]
+        public async Task<IActionResult> AssignRole(RoleDTO dto)
+        {
+            var result = await _userBL.AssignRole(dto);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("change-role")]
+        public async Task<IActionResult> ChangeRole(RoleDTO dto)
+        {
+            var result = await _userBL.ChangeRole(dto);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("remove-role")]
+        public async Task<IActionResult> RemoveRole(RoleDTO dto)
+        {
+            var result = await _userBL.RemoveRole(dto);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
     }
 }

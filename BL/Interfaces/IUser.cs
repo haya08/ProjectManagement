@@ -15,5 +15,9 @@ namespace ProjectManagement.BL.Interfaces
         Task<ApiResponse> UpdateProfile(UpdateProfileDTO dto);
         Task<ApiResponse> ChangePassword(ChangePasswordDTO dto);
         Task<ApiResponse> UploadProfileImage(IFormFile file);
+        ApiResponse GetUserDashboard();
+        Task<ApiResponse> GetAdminDashboard();
+        Task<ApiResponse> AssignRole(RoleDTO dto);
+        Task<ApiResponse> ChangeRole(RoleDTO dto);
     }
 }

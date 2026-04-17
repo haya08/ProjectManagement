@@ -8,6 +8,7 @@ namespace ProjectManagement.Repositories.Interfaces
         List<TbTask> GetAll(TaskQueryDTO query);
         TbTask GetById(int id);
         public List<TbTask> GetByProjectId(int id);
+        List<TbTask> GetByUser(string userId);
         void Add(TbTask task);
         void Update(TbTask task);
         void Delete(TbTask task);

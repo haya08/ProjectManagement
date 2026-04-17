@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
@@ -47,6 +48,14 @@ namespace ProjectManagement.Repositories.Implementations
         public List<TbTask> GetByProjectId(int id)
         {
             return _context.TbTasks.Where(t => t.ProjectId == id).Include(t => t.AssignedToNavigation).ToList();
+        }
+
+        public List<TbTask> GetByUser(string userId)
+        {
+            return _context.TbTasks
+                .Where(t => t.AssignedTo == userId)
+                .OrderByDescending(t => t.DueDate)
+                .ToList();
         }
 
         public void Add(TbTask task)
