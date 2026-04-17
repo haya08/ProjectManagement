@@ -16,7 +16,10 @@ namespace ProjectManagement.Repositories.Implementations
 
         public List<TbProject> GetAll()
         {
-            return _context.TbProjects.ToList();
+            return _context.TbProjects
+                .Include(p => p.TbProjectMembers)
+                    .ThenInclude(m => m.User)
+                .ToList();
         }
 
         public TbProject GetById(int id)

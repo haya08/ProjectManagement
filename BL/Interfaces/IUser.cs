@@ -19,5 +19,6 @@ namespace ProjectManagement.BL.Interfaces
         Task<ApiResponse> GetAdminDashboard();
         Task<ApiResponse> AssignRole(RoleDTO dto);
         Task<ApiResponse> ChangeRole(RoleDTO dto);
+        Task<ApiResponse> RemoveRole(RoleDTO dto);
     }
 }

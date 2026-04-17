@@ -42,6 +42,7 @@ namespace ProjectManagement.BL.Implementations
                 Id = p.Id,
                 Name = p.Name,
                 Description = p.Description,
+                CreatedBy = p.CreatedBy,
                 CreatedAt = p.CreatedAt
             });
 
@@ -88,6 +89,7 @@ namespace ProjectManagement.BL.Implementations
                     Id = p.Id,
                     Name = p.Name,
                     Description = p.Description,
+                    CreatedBy = p.CreatedBy,
                     CreatedAt = p.CreatedAt
                 });
 

@@ -18,6 +18,7 @@ namespace ProjectManagement.Repositories.Implementations
 
         public List<TbProjectMember> GetByProjectId(int projectId)
             => _context.TbProjectMembers
+                .Include(m => m.User)
                 .Where(m => m.ProjectId == projectId)
                 .ToList();
 

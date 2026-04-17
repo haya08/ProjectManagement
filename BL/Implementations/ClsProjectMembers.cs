@@ -28,7 +28,7 @@ namespace ProjectManagement.BL.Implementations
             var currentUserRole = _httpContext.HttpContext.User
                 .FindFirst(ClaimTypes.Role)?.Value;
 
-            // 🔥 check: only Admin or ProjectManager can add members
+            // check: only Admin or ProjectManager can add members
             var existing = _repo.GetByUserAndProject(currentUserId, dto.ProjectId);
 
             if (currentUserRole != "Admin" &&
@@ -79,6 +79,7 @@ namespace ProjectManagement.BL.Implementations
             {
                 Id = m.Id,
                 UserId = m.UserId,
+                UserName = m.User?.UserName,
                 Role = m.Role
             });
 

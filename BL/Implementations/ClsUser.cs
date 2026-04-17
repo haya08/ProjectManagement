@@ -478,5 +478,58 @@ namespace ProjectManagement.BL.Implementations
 
             return result;
         }
+
+        public async Task<ApiResponse> ChangeRole(RoleDTO dto)
+        {
+            var result = new ApiResponse();
+
+            var user = await _userManager.FindByIdAsync(dto.UserId);
+
+            if (user == null)
+            {
+                result.StatusCode = "404";
+                result.Errors.Add(new { User = "User not found" });
+                return result;
+            }
+
+            var currentRoles = await _userManager.GetRolesAsync(user);
+
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+            await _userManager.AddToRoleAsync(user, dto.Role);
+
+            result.StatusCode = "200";
+            result.Data = "Role updated successfully";
+
+            return result;
+        }
+
+        public async Task<ApiResponse> RemoveRole(RoleDTO dto)
+        {
+            var result = new ApiResponse();
+
+            var user = await _userManager.FindByIdAsync(dto.UserId);
+
+            if (user == null)
+            {
+                result.StatusCode = "404";
+                result.Errors.Add(new { User = "User not found" });
+                return result;
+            }
+
+            var removeResult = await _userManager.RemoveFromRoleAsync(user, dto.Role);
+
+            if (!removeResult.Succeeded)
+            {
+                result.StatusCode = "400";
+                result.Errors = new List<object>(removeResult.Errors.Select(e => e.Description).ToList());
+                return result;
+            }
+
+            result.StatusCode = "200";
+            result.Data = "Role removed successfully";
+
+            return result;
+        }
     }
 }
