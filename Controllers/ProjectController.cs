@@ -48,6 +48,14 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
+        [Authorize(Roles = "Project Manager,Admin")]
+        [HttpGet("{projectId}/stats")]
+        public IActionResult GetProjectStats(int projectId)
+        {
+            var result = _projectBL.GetProjectStats(projectId);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
         [Authorize(Roles = "Admin, Project Manager")]
         [HttpPost]
         public IActionResult Create([FromBody] CreateProjectDTO dto)

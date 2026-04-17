@@ -2,6 +2,7 @@
 using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.ProjectMembers;
 using ProjectManagement.DTOs.Projects;
+using ProjectManagement.DTOs.Stats;
 using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
@@ -14,11 +15,16 @@ namespace ProjectManagement.BL.Implementations
         private readonly IProjectRepository _repo;
         private readonly IHttpContextAccessor _httpContext;
         private readonly IProjectMemberRepository _projectMemberRepo;
-        public ClsProject(IProjectRepository repo, IHttpContextAccessor httpContext, IProjectMemberRepository projectMemberRepo)
+        private readonly ITaskRepository _taskRepo;
+        public ClsProject(IProjectRepository repo, 
+            IHttpContextAccessor httpContext, 
+            IProjectMemberRepository projectMemberRepo,
+            ITaskRepository taskRepo)
         {
             _repo = repo;
             _httpContext = httpContext;
             _projectMemberRepo = projectMemberRepo;
+            _taskRepo = taskRepo;
         }
 
         public ApiResponse GetAll()
@@ -84,6 +90,68 @@ namespace ProjectManagement.BL.Implementations
                 Data = projects,
                 StatusCode = "200"
             };
+        }
+
+        public ApiResponse GetProjectStats(int projectId)
+        {
+            // authorize the user
+            var user = _httpContext.HttpContext.User;
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // user should be a project manager
+            if (user.IsInRole("Project Manager"))
+            {
+                var isMember = _projectMemberRepo.GetByUserAndProject(userId, projectId);
+
+                if (isMember == null)
+                {
+                    return new ApiResponse
+                    {
+                        StatusCode = "403",
+                        Errors = new List<object>
+                        {
+                            new { Message = "You don't have access to this project" }
+                        }
+                    };
+                }
+            }
+
+            var result = new ApiResponse();
+
+            var tasks = _taskRepo.GetByProjectId(projectId);
+
+            if (tasks == null || !tasks.Any())
+            {
+                result.Data = new ProjectStatsDTO
+                {
+                    TotalTasks = 0,
+                    DoneTasks = 0,
+                    TodoTasks = 0,
+                    InProgressTasks = 0,
+                    ProgressPercentage = 0
+                };
+                result.StatusCode = "200";
+                return result;
+            }
+
+            var total = tasks.Count;
+            var done = tasks.Count(t => t.Status.ToLower() == "done");
+            var todo = tasks.Count(t => t.Status.ToLower() == "todo");
+            var inProgress = tasks.Count(t => t.Status.ToLower() == "in_progress");
+
+            var progress = (double)done / total * 100;
+
+            result.Data = new ProjectStatsDTO
+            {
+                TotalTasks = total,
+                DoneTasks = done,
+                TodoTasks = todo,
+                InProgressTasks = inProgress,
+                ProgressPercentage = Math.Round(progress, 2)
+            };
+
+            result.StatusCode = "200";
+            return result;
         }
 
         public ApiResponse GetProjectDetails(int projectId)
