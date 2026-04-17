@@ -438,14 +438,41 @@ namespace ProjectManagement.BL.Implementations
             };
         }
 
-        private async Task SendRealtimeNotification(string userId, string message, int taskId)
+        private async Task SendRealtimeNotification(string userId, string message, int taskId, int projectId)
         {
-            await _hub.Clients.User(userId)
-                .SendAsync("ReceiveNotification", new
+            //await _hub.Clients.User(userId)
+            //    .SendAsync("ReceiveNotification", new
+            //    {
+            //        Message = message,
+            //        TaskId = taskId
+            //    });
+
+            var members = _projectMemberRepo.GetByProjectId(projectId);
+
+            foreach (var member in members)
+            {
+                if (member.UserId == userId) continue;
+
+                var notification = new TbNotification
                 {
+                    UserId = member.UserId,
                     Message = message,
-                    TaskId = taskId
-                });
+                    Type = NotificationTypes.Task,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _notificationRepo.Add(notification);
+
+                await _hub.Clients.User(member.UserId)
+                    .SendAsync("ReceiveNotification", new
+                    {
+                        Message = message,
+                        Type = "task",
+                        TaskId = taskId
+                    });
+            }
+
+            _notificationRepo.Save();
         }
 
         private string BuildUpdateMessage(dynamic task, UpdateTaskDTO dto)
@@ -502,13 +529,13 @@ namespace ProjectManagement.BL.Implementations
                 // message ديناميك
                 var message = BuildUpdateMessage(oldTask, dto);
 
-                // save notification in DB
-                var notification = BuildNotification(task, message);
-                _notificationRepo.Add(notification);
-                _notificationRepo.Save();
+                //// save notification in DB
+                //var notification = BuildNotification(task, message);
+                //_notificationRepo.Add(notification);
+                //_notificationRepo.Save();
 
                 // send real-time
-                await SendRealtimeNotification(userId, message, task.Id);
+                await SendRealtimeNotification(userId, message, task.Id, (int)task.ProjectId);
 
                 result.Data = MapToDTO(task);
                 result.StatusCode = "200";
@@ -663,7 +690,7 @@ namespace ProjectManagement.BL.Implementations
                 _notificationRepo.Add(notification);
                 _notificationRepo.Save();
 
-                await SendRealtimeNotification(dto.AssignedTo, message, task.Id);
+                await SendRealtimeNotification(dto.AssignedTo, message, task.Id, (int)task.ProjectId);
 
                 _repo.Update(task);
                 _repo.Save();
