@@ -138,5 +138,24 @@ namespace ProjectManagement.Controllers
             var result = await _userBL.RemoveRole(dto);
             return StatusCode(int.Parse(result.StatusCode), result);
         }
+
+        // Create user
+        [Authorize(Roles = "Admin")]
+        [HttpPost("create-user")]
+        public async Task<IActionResult> CreateUser(AdminCreateUserDTO dto)
+        {
+            var result = await _userBL.CreateUser(dto);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        // Delete user
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("delete-user/{id}")]
+        public async Task<IActionResult> DeleteUser(string id)
+        {
+            var result = await _userBL.DeleteUser(id);
+
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
     }
 }

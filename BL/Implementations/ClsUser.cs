@@ -531,5 +531,99 @@ namespace ProjectManagement.BL.Implementations
 
             return result;
         }
+
+        public async Task<ApiResponse> CreateUser(AdminCreateUserDTO dto)
+        {
+            var result = new ApiResponse();
+
+            // validation
+            if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            {
+                result.StatusCode = "400";
+                result.Errors.Add(new { Message = "Email and Password are required" });
+                return result;
+            }
+
+            var user = new ApplicationUser
+            {
+                UserName = dto.Email,
+                Email = dto.Email,
+                FirstName = dto.FirstName,
+                LastName = dto.LastName,
+                Status = "Approved" // admin-created users usually auto approved
+            };
+
+            var createResult = await _userManager.CreateAsync(user, dto.Password);
+
+            if (!createResult.Succeeded)
+            {
+                result.StatusCode = "400";
+                result.Errors = new List<object>(createResult.Errors.Select(e => e.Description).ToList());
+                return result;
+            }
+
+            // assign role
+            if (!string.IsNullOrEmpty(dto.Role))
+            {
+                var roleExists = await _roleManager.RoleExistsAsync(dto.Role);
+
+                if (!roleExists)
+                {
+                    result.StatusCode = "400";
+                    result.Errors.Add(new { Role = "Invalid role" });
+                    return result;
+                }
+
+                await _userManager.AddToRoleAsync(user, dto.Role);
+            }
+
+            result.StatusCode = "201";
+            result.Data = new
+            {
+                user.Id,
+                user.Email,
+                Role = dto.Role
+            };
+
+            return result;
+        }
+
+        public async Task<ApiResponse> DeleteUser(string userId)
+        {
+            var currentAdminId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var result = new ApiResponse();
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                result.StatusCode = "404";
+                result.Errors.Add(new { Message = "User not found" });
+                return result;
+            }
+
+            // admin مايمسحش نفسه
+            if (userId == currentAdminId)
+            {
+                result.StatusCode = "400";
+                result.Errors.Add(new { Message = "You cannot delete yourself" });
+                return result;
+            }
+
+            var deleteResult = await _userManager.DeleteAsync(user);
+
+            if (!deleteResult.Succeeded)
+            {
+                result.StatusCode = "400";
+                result.Errors = new List<object>(deleteResult.Errors.Select(e => e.Description).ToList());
+                return result;
+            }
+
+            result.StatusCode = "200";
+            result.Data = "User deleted successfully";
+
+            return result;
+        }
     }
 }

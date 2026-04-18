@@ -20,5 +20,7 @@ namespace ProjectManagement.BL.Interfaces
         Task<ApiResponse> AssignRole(RoleDTO dto);
         Task<ApiResponse> ChangeRole(RoleDTO dto);
         Task<ApiResponse> RemoveRole(RoleDTO dto);
+        Task<ApiResponse> CreateUser(AdminCreateUserDTO dto);
+        Task<ApiResponse> DeleteUser(string userId);
     }
 }
