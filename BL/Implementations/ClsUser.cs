@@ -54,7 +54,8 @@ namespace ProjectManagement.BL.Implementations
                 {
                     Id = u.Id,
                     Email = u.Email,
-                    Name = u.FirstName + " " + u.LastName
+                    Name = u.FirstName + " " + u.LastName,
+                    Role = _userManager.GetRolesAsync(u).Result.FirstOrDefault() // Get the first role (assuming one role per user)
                 }).ToList(),
                 StatusCode = "200"
             };
