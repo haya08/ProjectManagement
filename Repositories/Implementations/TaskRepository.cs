@@ -19,25 +19,30 @@ namespace ProjectManagement.Repositories.Implementations
 
         public List<TbTask> GetAll(TaskQueryDTO query)
         {
-            var tasks = _context.TbTasks.Include(t => t.AssignedToNavigation).AsQueryable();
+            //var tasks = _context.TbTasks.Include(t => t.AssignedToNavigation);
+            var tasks = _context.TbTasks
+                .Include(t => t.AssignedToNavigation)
+                .ToList();
 
-            // Filtering
-            if (!string.IsNullOrEmpty(query.Status))
-            {
-                tasks = tasks.Where(t => t.Status == query.Status);
-            }
+            return tasks;
 
-            if (!string.IsNullOrEmpty(query.Priority))
-            {
-                tasks = tasks.Where(t => t.Priority == query.Priority);
-            }
+            //// Filtering
+            //if (!string.IsNullOrEmpty(query.Status))
+            //{
+            //    tasks = tasks.Where(t => t.Status == query.Status);
+            //}
 
-            // Pagination
-            tasks = tasks
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize);
+            //if (!string.IsNullOrEmpty(query.Priority))
+            //{
+            //    tasks = tasks.Where(t => t.Priority == query.Priority);
+            //}
 
-            return tasks.ToList();
+            //// Pagination
+            //tasks = tasks
+            //    .Skip((query.Page - 1) * query.PageSize)
+            //    .Take(query.PageSize);
+
+            //return tasks.ToList();
         }
 
         public TbTask GetById(int id)

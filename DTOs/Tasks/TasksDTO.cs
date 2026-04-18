@@ -8,5 +8,7 @@
         public string Priority { get; set; }
         public string AssignedUserName { get; set; }
         public DateTime? DueDate { get; set; }
+        public string? CreatedBy { get; set; }
+        public DateTime? CreatedAt { get; set; }
     }
 }

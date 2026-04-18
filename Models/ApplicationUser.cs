@@ -8,6 +8,6 @@ namespace ProjectManagement.Models
         public string LastName { get; set; }
         public string Status { get; set; }
         public string? ProfileImageUrl { get; set; }
-
+        public DateTime? CreatedAt { get; set; }
     }
 }

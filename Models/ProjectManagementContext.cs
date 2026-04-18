@@ -17,6 +17,8 @@ public partial class ProjectManagementContext : IdentityDbContext<ApplicationUse
     {
     }
 
+    public virtual DbSet<TbActivityLog> TbActivityLogs { get; set; }
+
     public virtual DbSet<TbAttachment> TbAttachments { get; set; }
 
     public virtual DbSet<TbComment> TbComments { get; set; }
@@ -38,6 +40,20 @@ public partial class ProjectManagementContext : IdentityDbContext<ApplicationUse
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<TbActivityLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Action).HasMaxLength(50);
+            entity.Property(e => e.EntityType).HasMaxLength(50);
+            entity.Property(e => e.EntityId).HasMaxLength(50);
+            entity.Property(e => e.Description).HasMaxLength(500);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId);
+        });
 
         modelBuilder.Entity<TbAttachment>(entity =>
         {

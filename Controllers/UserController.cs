@@ -48,17 +48,6 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
-        //[Authorize]
-        //[HttpGet("me")]
-        //public async Task<IActionResult> GetMe()
-        //{
-        //    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        //    var result = await _userBL.GetCurrentUser(userId);
-
-        //    return StatusCode(int.Parse(result.StatusCode), result);
-        //}
-
         [Authorize(Roles = "Admin")]
         [HttpPost("approve/{userId}")]
         public async Task<IActionResult> Approve(string userId)
@@ -128,6 +117,14 @@ namespace ProjectManagement.Controllers
         public async Task<IActionResult> GetAdminDashboard()
         {
             var result = await _userBL.GetAdminDashboard();
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("activity-trend")]
+        public IActionResult GetActivityTrend()
+        {
+            var result = _userBL.GetActivityTrend();
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 

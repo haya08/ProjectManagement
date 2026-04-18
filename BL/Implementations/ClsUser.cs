@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.EntityFrameworkCore;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.Projects;
@@ -24,6 +25,7 @@ namespace ProjectManagement.BL.Implementations
         private readonly IProjectMemberRepository _projectMemberRepo;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IUserRepository _userRepository;
+        private readonly ProjectManagementContext _context;
         public ClsUser(UserManager<ApplicationUser> userManager,
             IJWT jWT,
             IHttpContextAccessor httpContext,
@@ -32,7 +34,8 @@ namespace ProjectManagement.BL.Implementations
             IProjectMemberRepository projectMemberRepo,
             IProjectRepository projectRepo,
             RoleManager<IdentityRole> roleManager,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            ProjectManagementContext context)
         {
             _userManager = userManager;
             _JWT = jWT;
@@ -43,6 +46,7 @@ namespace ProjectManagement.BL.Implementations
             _projectRepo = projectRepo;
             _roleManager = roleManager;
             _userRepository = userRepository;
+            _context = context;
         }
 
         public async Task<ApiResponse> GetAllUsers()
@@ -100,7 +104,7 @@ namespace ProjectManagement.BL.Implementations
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            if(user == null)
+            if (user == null)
             {
                 return new ApiResponse
                 {
@@ -112,7 +116,7 @@ namespace ProjectManagement.BL.Implementations
                 };
             }
 
-            if(user.Status == "Deleted")
+            if (user.Status == "Deleted")
             {
                 return new ApiResponse
                 {
@@ -178,7 +182,8 @@ namespace ProjectManagement.BL.Implementations
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
                 Status = "Pending",
-                ProfileImageUrl = ""
+                ProfileImageUrl = "",
+                CreatedAt = DateTime.UtcNow
             };
 
             // a user cannot choose Admin
@@ -538,6 +543,45 @@ namespace ProjectManagement.BL.Implementations
             return result;
         }
 
+        public ApiResponse GetActivityTrend()
+        {
+            var result = new ApiResponse();
+
+            // get the date for tomorrow
+            var today = DateTime.UtcNow.AddDays(1).Date;
+            //var today = DateTime.UtcNow;
+
+            var labels = new List<string>();
+            var usersData = new List<int>();
+            var tasksData = new List<int>();
+
+            for (int i = 6; i >= 0; i--)
+            {
+                var date = today.AddDays(-i);
+
+                labels.Add(date.ToString("ddd")); // Mon, Tue ...
+
+                var usersCount = _context.Users
+                    .Count(u => u.CreatedAt.HasValue && u.CreatedAt.Value.Date <= date);
+
+                var tasksCount = _context.TbTasks
+                    .Count(t => t.CreatedAt.HasValue && t.CreatedAt.Value.Date <= date);
+
+                usersData.Add(usersCount);
+                tasksData.Add(tasksCount);
+            }
+
+            result.Data = new
+            {
+                labels,
+                users = usersData,
+                tasks = tasksData
+            };
+
+            result.StatusCode = "200";
+            return result;
+        }
+
         public async Task<ApiResponse> AssignRole(RoleDTO dto)
         {
             var result = new ApiResponse();
@@ -594,7 +638,7 @@ namespace ProjectManagement.BL.Implementations
 
             await _userManager.AddToRoleAsync(user, dto.Role);
 
-            if(dto.Role.ToLower() == "team member")
+            if (dto.Role.ToLower() == "team member")
             {
                 user.Status = "Approved"; // TeamMember مثلاً يدخل علطول
                 await _userManager.UpdateAsync(user);

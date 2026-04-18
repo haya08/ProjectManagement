@@ -47,8 +47,10 @@ namespace ProjectManagement.BL.Implementations
                     Status = t.Status,
                     Priority = t.Priority,
                     AssignedUserName = t.AssignedToNavigation?.UserName,
-                    DueDate = t.DueDate
-                }).ToList(); ;
+                    DueDate = t.DueDate,
+                    CreatedAt = t.CreatedAt,
+                    CreatedBy = t.CreatedBy,
+                }).ToList();
 
                 result.StatusCode = "200";
 
@@ -227,7 +229,9 @@ namespace ProjectManagement.BL.Implementations
                     ProjectId = dto.ProjectId,
                     DueDate = dto.DueDate,
                     Priority = dto.Priority,
-                    Status = "todo"
+                    Status = "todo",
+                    CreatedBy = userId,
+                    CreatedAt = DateTime.UtcNow
                 };
 
                 _repo.Add(task);
@@ -240,7 +244,9 @@ namespace ProjectManagement.BL.Implementations
                     Status = task.Status,
                     Priority = task.Priority,
                     AssignedUserName = task.AssignedToNavigation?.UserName,
-                    DueDate = task.DueDate
+                    DueDate = task.DueDate,
+                    CreatedAt = task.CreatedAt,
+                    CreatedBy = task.CreatedBy
                 };
                 result.StatusCode = "201";
                 return result;
