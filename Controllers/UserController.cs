@@ -40,16 +40,16 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
-        [Authorize]
-        [HttpGet("me")]
-        public async Task<IActionResult> GetMe()
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        //[Authorize]
+        //[HttpGet("me")]
+        //public async Task<IActionResult> GetMe()
+        //{
+        //    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var result = await _userBL.GetCurrentUser(userId);
+        //    var result = await _userBL.GetCurrentUser(userId);
 
-            return StatusCode(int.Parse(result.StatusCode), result);
-        }
+        //    return StatusCode(int.Parse(result.StatusCode), result);
+        //}
 
         [Authorize(Roles = "Admin")]
         [HttpPost("approve/{userId}")]
@@ -76,7 +76,7 @@ namespace ProjectManagement.Controllers
         }
 
         [Authorize]
-        [HttpGet("my_profile")]
+        [HttpGet("me")]
         public async Task<IActionResult> GetMyProfile()
         {
             var result = await _userBL.GetMyProfile();
@@ -84,8 +84,8 @@ namespace ProjectManagement.Controllers
         }
 
         [Authorize]
-        [HttpPut("me")]
-        public async Task<IActionResult> UpdateProfile(UpdateProfileDTO dto)
+        [HttpPost("me")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDTO dto)
         {
             var result = await _userBL.UpdateProfile(dto);
             return StatusCode(int.Parse(result.StatusCode), result);
@@ -93,7 +93,7 @@ namespace ProjectManagement.Controllers
 
         [Authorize]
         [HttpPost("change-password")]
-        public async Task<IActionResult> ChangePassword(ChangePasswordDTO dto)
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO dto)
         {
             var result = await _userBL.ChangePassword(dto);
             return StatusCode(int.Parse(result.StatusCode), result);

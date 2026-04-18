@@ -155,7 +155,8 @@ public partial class ProjectManagementContext : IdentityDbContext<ApplicationUse
 
             entity.HasOne(d => d.Task).WithMany()
                 .HasForeignKey(d => d.TaskId)
-                .HasConstraintName("FK__TaskHisto__TaskI__4F7CD00D");
+                .HasConstraintName("FK__TaskHisto__TaskI__4F7CD00D")
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

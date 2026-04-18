@@ -74,7 +74,12 @@ namespace ProjectManagement.BL.Implementations
             _repo.Add(attachment);
             _repo.Save();
 
-            result.Data = attachment;
+            result.Data = new AttachmentDTO
+            {
+                Id = attachment.Id,
+                FileUrl = attachment.FileUrl,
+                CreatedAt = attachment.CreatedAt
+            };
             result.StatusCode = "201";
 
             return result;

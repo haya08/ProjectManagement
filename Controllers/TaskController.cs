@@ -84,8 +84,7 @@ namespace ProjectManagement.Controllers
         }
 
         // POST api/<TaskController>
-        [HttpPost]
-        [Route("Delete")]
+        [HttpPost("delete")]
         [Authorize(Roles = "Admin")]
         public IActionResult Delete([FromBody] int id)
         {

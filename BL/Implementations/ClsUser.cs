@@ -55,7 +55,8 @@ namespace ProjectManagement.BL.Implementations
                     Id = u.Id,
                     Email = u.Email,
                     Name = u.FirstName + " " + u.LastName,
-                    Role = _userManager.GetRolesAsync(u).Result.FirstOrDefault() // Get the first role (assuming one role per user)
+                    Role = _userManager.GetRolesAsync(u).Result.FirstOrDefault(),
+                    Status = u.Status
                 }).ToList(),
                 StatusCode = "200"
             };
@@ -81,6 +82,30 @@ namespace ProjectManagement.BL.Implementations
         public async Task<ApiResponse> Login(LoginDTO dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
+
+            if(user == null)
+            {
+                return new ApiResponse
+                {
+                    StatusCode = "401",
+                    Errors = new List<object>
+                    {
+                        new { Field = "email", Message = "Email not found" }
+                    }
+                };
+            }
+
+            if(user.Status == "Deleted")
+            {
+                return new ApiResponse
+                {
+                    StatusCode = "403",
+                    Errors = new List<object>
+                    {
+                        new { Message = "Your account has been deleted" }
+                    }
+                };
+            }
 
             if (user == null)
                 return new ApiResponse { StatusCode = "401" };
@@ -270,7 +295,8 @@ namespace ProjectManagement.BL.Implementations
                     Id = user.Id,
                     Email = user.Email,
                     Name = user.FirstName + " " + user.LastName,
-                    Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault()
+                    Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault(),
+                    Status = user.Status
                 },
                 StatusCode = "200"
             };
@@ -290,8 +316,11 @@ namespace ProjectManagement.BL.Implementations
                 return result;
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.Name))
-                user.FirstName = dto.Name;
+            if (!string.IsNullOrWhiteSpace(dto.FirstName))
+                user.FirstName = dto.FirstName;
+
+            if (!string.IsNullOrWhiteSpace(dto.LastName))
+                user.LastName = dto.LastName;
 
             if (!string.IsNullOrWhiteSpace(dto.Email))
                 user.Email = dto.Email;
@@ -310,6 +339,25 @@ namespace ProjectManagement.BL.Implementations
 
             var userId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             var user = await _userManager.FindByIdAsync(userId);
+
+            var valid = await _userManager.CheckPasswordAsync(user, dto.CurrentPassword);
+
+            if (!valid)
+                return new ApiResponse
+                {
+                    Errors = new List<object>
+                    {
+                        new { Field = "password", Message = "Invalid password" }
+                    },
+                    StatusCode = "401"
+                };
+
+            if (dto.NewPassword != dto.ConfirmPassword)
+            {
+                result.StatusCode = "400";
+                result.Errors.Add(new { Message = "New password and confirm password do not match" });
+                return result;
+            }
 
             var changeResult = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
 
@@ -344,6 +392,11 @@ namespace ProjectManagement.BL.Implementations
 
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
+            else
+            {
+                Directory.Delete(uploadsFolder, true); // delete old images
+                Directory.CreateDirectory(uploadsFolder);
+            }
 
             var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
             var path = Path.Combine(uploadsFolder, fileName);
@@ -633,14 +686,17 @@ namespace ProjectManagement.BL.Implementations
                 return result;
             }
 
-            var deleteResult = await _userManager.DeleteAsync(user);
+            //var deleteResult = await _userManager.DeleteAsync(user);
 
-            if (!deleteResult.Succeeded)
-            {
-                result.StatusCode = "400";
-                result.Errors = new List<object>(deleteResult.Errors.Select(e => e.Description).ToList());
-                return result;
-            }
+            //if (!deleteResult.Succeeded)
+            //{
+            //    result.StatusCode = "400";
+            //    result.Errors = new List<object>(deleteResult.Errors.Select(e => e.Description).ToList());
+            //    return result;
+            //}
+
+            user.Status = "Deleted";
+            await _userManager.UpdateAsync(user);
 
             result.StatusCode = "200";
             result.Data = "User deleted successfully";
