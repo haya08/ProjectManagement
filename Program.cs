@@ -39,6 +39,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.AddSignalR();
 
 // dependency injection
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<ITask, ClsTask>();
 builder.Services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();

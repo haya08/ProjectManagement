@@ -23,6 +23,7 @@ namespace ProjectManagement.BL.Implementations
         private readonly IProjectRepository _projectRepo;
         private readonly IProjectMemberRepository _projectMemberRepo;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly IUserRepository _userRepository;
         public ClsUser(UserManager<ApplicationUser> userManager,
             IJWT jWT,
             IHttpContextAccessor httpContext,
@@ -30,7 +31,8 @@ namespace ProjectManagement.BL.Implementations
             ITaskRepository taskRepo,
             IProjectMemberRepository projectMemberRepo,
             IProjectRepository projectRepo,
-            RoleManager<IdentityRole> roleManager)
+            RoleManager<IdentityRole> roleManager,
+            IUserRepository userRepository)
         {
             _userManager = userManager;
             _JWT = jWT;
@@ -40,6 +42,22 @@ namespace ProjectManagement.BL.Implementations
             _projectMemberRepo = projectMemberRepo;
             _projectRepo = projectRepo;
             _roleManager = roleManager;
+            _userRepository = userRepository;
+        }
+
+        public async Task<ApiResponse> GetAllUsers()
+        {
+            var users = _userRepository.GetAll();
+            return new ApiResponse
+            {
+                Data = users.Select(u => new UserDTO
+                {
+                    Id = u.Id,
+                    Email = u.Email,
+                    Name = u.FirstName + " " + u.LastName
+                }).ToList(),
+                StatusCode = "200"
+            };
         }
 
         public async Task<ApiResponse> GetCurrentUser(string userId)
@@ -69,12 +87,13 @@ namespace ProjectManagement.BL.Implementations
             var valid = await _userManager.CheckPasswordAsync(user, dto.Password);
 
             if (!valid)
-                return new ApiResponse { 
+                return new ApiResponse
+                {
                     Errors = new List<object>
                     {
                         new { Field = "password", Message = "Invalid password" }
                     },
-                    StatusCode = "401" 
+                    StatusCode = "401"
                 };
 
             if (user.Status != "Approved")
@@ -83,7 +102,7 @@ namespace ProjectManagement.BL.Implementations
                 {
                     StatusCode = "403",
                     Errors = new List<object>
-                    {   
+                    {
                         new { Message = "Your account is not approved yet" }
                     }
                 };
@@ -115,7 +134,8 @@ namespace ProjectManagement.BL.Implementations
                 Email = dto.Email,
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
-                Status = "Pending"
+                Status = "Pending",
+                ProfileImageUrl = ""
             };
 
             // a user cannot choose Admin
@@ -271,7 +291,7 @@ namespace ProjectManagement.BL.Implementations
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 user.FirstName = dto.Name;
 
-            if(!string.IsNullOrWhiteSpace(dto.Email))
+            if (!string.IsNullOrWhiteSpace(dto.Email))
                 user.Email = dto.Email;
 
             await _userManager.UpdateAsync(user);

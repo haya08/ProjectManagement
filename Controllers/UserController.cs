@@ -18,6 +18,14 @@ namespace ProjectManagement.Controllers
             _userBL = userBL;
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var result = await _userBL.GetAllUsers();
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDTO dto)
         {
@@ -124,8 +132,8 @@ namespace ProjectManagement.Controllers
         }
 
         [Authorize(Roles = "Admin")]
-        [HttpPut("change-role")]
-        public async Task<IActionResult> ChangeRole(RoleDTO dto)
+        [HttpPost("change-role")]
+        public async Task<IActionResult> ChangeRole([FromBody] RoleDTO dto)
         {
             var result = await _userBL.ChangeRole(dto);
             return StatusCode(int.Parse(result.StatusCode), result);
