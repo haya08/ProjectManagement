@@ -269,7 +269,8 @@ namespace ProjectManagement.BL.Implementations
                 {
                     Id = user.Id,
                     Email = user.Email,
-                    Name = user.FirstName + " " + user.LastName
+                    Name = user.FirstName + " " + user.LastName,
+                    Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault()
                 },
                 StatusCode = "200"
             };

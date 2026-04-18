@@ -76,7 +76,7 @@ namespace ProjectManagement.Controllers
         }
 
         [Authorize]
-        [HttpGet("me")]
+        [HttpGet("my_profile")]
         public async Task<IActionResult> GetMyProfile()
         {
             var result = await _userBL.GetMyProfile();

@@ -637,7 +637,7 @@ namespace ProjectManagement.BL.Implementations
 
                 // check permission (only PM or Admin)
 
-                if (!user.IsInRole("Project Manager"))
+                if (!user.IsInRole("Project Manager") && !user.IsInRole("Admin"))
                 {
                     result.StatusCode = "403";
                     result.Errors.Add(new { Message = "Not allowed to assign tasks" });
