@@ -1,5 +1,6 @@
 ﻿using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.ProjectMembers;
+using ProjectManagement.DTOs.Users;
 
 namespace ProjectManagement.BL.Interfaces
 {
@@ -8,5 +9,6 @@ namespace ProjectManagement.BL.Interfaces
         ApiResponse AddMember(AddMemberDTO dto);
         ApiResponse GetProjectMembers(int projectId);
         ApiResponse RemoveMember(int projectId, string userId);
+        ApiResponse ChangeRole(ProjectRoleDTO dto);
     }
 }

@@ -26,6 +26,14 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(string id)
+        {
+            var result = await _userBL.GetById(id);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDTO dto)
         {

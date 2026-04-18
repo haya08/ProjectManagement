@@ -270,7 +270,7 @@ namespace ProjectManagement.BL.Implementations
         private void ValidatePermissions(ClaimsPrincipal user, string userId, TbTask task, ApiResponse result)
         {
             // TeamMember → فقط assigned task
-            if (user.IsInRole("TeamMember") && task.AssignedTo != userId)
+            if (user.IsInRole("Team Member") && task.AssignedTo != userId)
             {
                 result.Errors.Add(new
                 {

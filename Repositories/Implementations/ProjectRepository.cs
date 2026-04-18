@@ -33,6 +33,7 @@ namespace ProjectManagement.Repositories.Implementations
                 .Include(p => p.TbTasks)
                     .ThenInclude(t => t.AssignedToNavigation)
                 .Include(p => p.TbProjectMembers)
+                    .ThenInclude(m => m.User)
                 .FirstOrDefault(p => p.Id == projectId);
         }
 

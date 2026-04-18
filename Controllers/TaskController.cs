@@ -85,14 +85,14 @@ namespace ProjectManagement.Controllers
 
         // POST api/<TaskController>
         [HttpPost("delete")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Project Manager")]
         public IActionResult Delete([FromBody] int id)
         {
             var response = _taskBL.DeleteTask(id);
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Project Manager")]
         [HttpPost("assign")]
         public async Task<IActionResult> AssignTask([FromBody] AssignTaskDTO dto)
         {

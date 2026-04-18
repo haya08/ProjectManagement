@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs.ProjectMembers;
+using ProjectManagement.DTOs.Users;
 using ProjectManagement.Repositories.Interfaces;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -9,6 +11,7 @@ namespace ProjectManagement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ProjectMemberController : ControllerBase
     {
         private readonly IProjectMembers _projectMemberBL;
@@ -18,6 +21,7 @@ namespace ProjectManagement.Controllers
             _projectMemberBL = projectMemberBL;
         }
 
+        [Authorize(Roles = "Admin,Project Manager")]
         [HttpPost]
         public IActionResult AddMember([FromBody] AddMemberDTO dto)
         {
@@ -25,6 +29,7 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
+        [Authorize(Roles = "Admin,Project Manager")]
         [HttpGet("{projectId}")]
         public IActionResult GetMembers(int projectId)
         {
@@ -32,10 +37,19 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
+        [Authorize(Roles = "Admin,Project Manager")]
         [HttpPost("RemoveMember")]
         public IActionResult RemoveMember([FromBody] RemoveMemberDTO dto)
         {
             var result = _projectMemberBL.RemoveMember(dto.ProjectId, dto.UserId);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [Authorize(Roles = "Admin,Project Manager")]
+        [HttpPost("ChangeRole")]
+        public IActionResult ChangeRole([FromBody] ProjectRoleDTO dto)
+        {
+            var result = _projectMemberBL.ChangeRole(dto);
             return StatusCode(int.Parse(result.StatusCode), result);
         }
     }

@@ -274,13 +274,18 @@ namespace ProjectManagement.BL.Implementations
                     Id = project.Id,
                     Name = project.Name,
                     Description = project.Description,
-                    CreatedAt = project.CreatedAt
+                    CreatedAt = project.CreatedAt,
+                    CreatedBy = project.TbProjectMembers.FirstOrDefault(m => m.Role.ToLower() == "project manager")?.User?.FirstName + " " +
+                                project.TbProjectMembers.FirstOrDefault(m => m.Role.ToLower() == "project manager")?.User?.LastName,
+                    TotalTasks = project.TbTasks.Count,
+                    TotalMembers = project.TbProjectMembers.Count
                 },
 
                 Members = project.TbProjectMembers.Select(m => new ProjectMemberDTO
                 {
                     UserId = m.UserId,
-                    Role = m.Role
+                    Role = m.Role,
+                    UserName = m.User?.FirstName + " " + m.User?.LastName
                 }).ToList(),
 
                 Tasks = project.TbTasks.Select(t => new TasksDTO
@@ -306,15 +311,26 @@ namespace ProjectManagement.BL.Implementations
         {
             var result = new ApiResponse();
 
+            var user = _httpContext.HttpContext.User;
+            var userId = _httpContext.HttpContext.User
+                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if(user.IsInRole("Team Member"))
+            {
+                result.Errors.Add(new { Message = "You don't have permission to create a project" });
+                result.StatusCode = "403";
+                return result;
+            }
+
+            // check if the project manger status is rejected
+
+
             if (string.IsNullOrWhiteSpace(dto.Name))
             {
                 result.Errors.Add(new { Name = "Name is required" });
                 result.StatusCode = "400";
                 return result;
             }
-
-            var userId = _httpContext.HttpContext.User
-                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var project = new TbProject
             {

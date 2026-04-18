@@ -62,6 +62,23 @@ namespace ProjectManagement.BL.Implementations
             };
         }
 
+        public async Task<ApiResponse> GetById(string id)
+        {
+            var user = _userRepository.GetById(id);
+            return new ApiResponse
+            {
+                Data = new UserDTO
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    Name = user.FirstName + " " + user.LastName,
+                    Role = _userManager.GetRolesAsync(user).Result.FirstOrDefault(),
+                    Status = user.Status
+                },
+                StatusCode = "200"
+            };
+        }
+
         public async Task<ApiResponse> GetCurrentUser(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
@@ -253,7 +270,11 @@ namespace ProjectManagement.BL.Implementations
                 return result;
             }
 
-            user.Status = "Rejected";
+            await _userManager.RemoveFromRolesAsync(user, await _userManager.GetRolesAsync(user));
+
+            await _userManager.AddToRoleAsync(user, "Team Member");
+
+            user.Status = "Approved";
             await _userManager.UpdateAsync(user);
 
             result.StatusCode = "200";
@@ -572,6 +593,12 @@ namespace ProjectManagement.BL.Implementations
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
 
             await _userManager.AddToRoleAsync(user, dto.Role);
+
+            if(dto.Role.ToLower() == "team member")
+            {
+                user.Status = "Approved"; // TeamMember مثلاً يدخل علطول
+                await _userManager.UpdateAsync(user);
+            }
 
             result.StatusCode = "200";
             result.Data = "Role updated successfully";

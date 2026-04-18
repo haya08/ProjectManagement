@@ -1,6 +1,7 @@
 ﻿using ProjectManagement.BL.Interfaces;
 using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.ProjectMembers;
+using ProjectManagement.DTOs.Users;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
 using System.Security.Claims;
@@ -20,35 +21,35 @@ namespace ProjectManagement.BL.Implementations
 
         public ApiResponse AddMember(AddMemberDTO dto)
         {
-            var result = new ApiResponse();
 
             var currentUserId = _httpContext.HttpContext.User
                 .FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var currentUserRole = _httpContext.HttpContext.User
-                .FindFirst(ClaimTypes.Role)?.Value;
+            var member = _repo.GetByUserAndProject(currentUserId, dto.ProjectId);
 
-            // check: only Admin or ProjectManager can add members
-            var existing = _repo.GetByUserAndProject(currentUserId, dto.ProjectId);
-
-            if (currentUserRole != "Admin" &&
-                (existing == null || existing.Role != "Project Manager"))
+            if(member == null)
             {
-                result.Errors.Add(new { Message = "Not authorized" });
-                result.StatusCode = "403";
+                var result = new ApiResponse
+                {
+                    Errors = new List<object> { new { Message = "Not a member of the project" } },
+                    StatusCode = "403"
+                };
                 return result;
             }
 
-            // check if already member
-            var memberExists = _repo.GetByUserAndProject(dto.UserId, dto.ProjectId);
-            if (memberExists != null)
+            if (member.Role.ToLower() != "project manager")
             {
-                result.Errors.Add(new { Message = "User already in project" });
-                result.StatusCode = "400";
+                var result = new ApiResponse
+                {
+                    Errors = new List<object> { new { Message = "Not authorized" } },
+                    StatusCode = "403"
+                };
                 return result;
             }
 
-            var member = new TbProjectMember
+            var response = new ApiResponse();
+
+            var newMember = new TbProjectMember
             {
                 ProjectId = dto.ProjectId,
                 UserId = dto.UserId,
@@ -56,19 +57,19 @@ namespace ProjectManagement.BL.Implementations
                 JoinedAt = DateTime.UtcNow
             };
 
-            _repo.Add(member);
+            _repo.Add(newMember);
             _repo.Save();
 
-            result.Data = new 
+            response.Data = new
             {
-                UserId = member.UserId,
-                ProjectId = member.ProjectId,
-                Role = member.Role,
-                JoinedAt = member.JoinedAt
+                UserId = newMember.UserId,
+                ProjectId = newMember.ProjectId,
+                Role = newMember.Role,
+                JoinedAt = newMember.JoinedAt
             };
-            result.StatusCode = "201";
+            response.StatusCode = "201";
 
-            return result;
+            return response;
         }
 
         public ApiResponse GetProjectMembers(int projectId)
@@ -102,7 +103,56 @@ namespace ProjectManagement.BL.Implementations
                 return result;
             }
 
+            if(member.Role.ToLower() != "project manager")
+            {
+                result.Errors.Add(new { Message = "Not authorized" });
+                result.StatusCode = "403";
+                return result;
+            }
+
             _repo.Delete(member);
+            _repo.Save();
+
+            result.StatusCode = "200";
+            return result;
+        }
+
+        public ApiResponse ChangeRole(ProjectRoleDTO dto)
+        {
+            var result = new ApiResponse();
+
+            // Authorization check: Only project managers can change roles
+
+            var user = _httpContext.HttpContext.User;
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var projectManger = _repo.GetByUserAndProject(userId, dto.ProjectId);
+
+            if (projectManger == null)
+            {
+                result.StatusCode = "404";
+                return result;
+            }
+
+            if(projectManger.Role.ToLower() != "project manager")
+            {
+                result.Errors.Add(new { Message = "Not authorized" });
+                result.StatusCode = "403";
+                return result;
+            }
+
+            var member = _repo.GetByUserAndProject(dto.UserId, dto.ProjectId);
+
+            if(member == null)
+            {
+                return new ApiResponse
+                {
+                    Errors = new List<object> { new { Message = "Member not found" } },
+                    StatusCode = "404"
+                };
+            }
+
+            member.Role = dto.Role;
             _repo.Save();
 
             result.StatusCode = "200";

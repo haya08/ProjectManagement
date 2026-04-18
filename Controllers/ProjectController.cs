@@ -99,7 +99,7 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(response.StatusCode), response);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin, Project Manager")]
         [HttpPost("Delete")]
         public IActionResult Delete([FromBody] int id)
         {
