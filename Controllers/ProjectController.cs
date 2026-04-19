@@ -21,6 +21,7 @@ namespace ProjectManagement.Controllers
         }
 
         [HttpGet]
+        [Authorize("Admin")]
         public IActionResult GetAll()
         {
             var result = _projectBL.GetAll();

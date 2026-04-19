@@ -298,7 +298,9 @@ namespace ProjectManagement.BL.Implementations
                 {
                     Id = u.Id,
                     Email = u.Email,
-                    Name = u.FirstName + " " + u.LastName
+                    Name = u.FirstName + " " + u.LastName,
+                    Role = "Project Manager",
+                    Status = u.Status
                 });
 
             return new ApiResponse

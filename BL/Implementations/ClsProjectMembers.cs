@@ -80,7 +80,7 @@ namespace ProjectManagement.BL.Implementations
             {
                 Id = m.Id,
                 UserId = m.UserId,
-                UserName = m.User?.UserName,
+                UserName = m.User?.FirstName + " " + m.User?.LastName,
                 Role = m.Role
             });
 

@@ -24,7 +24,12 @@ namespace ProjectManagement.Repositories.Implementations
 
         public TbProject GetById(int id)
         {
-            return _context.TbProjects.FirstOrDefault(t => t.Id == id);
+            return _context.TbProjects
+                .Include(p => p.TbTasks)
+                    .ThenInclude(t => t.AssignedToNavigation)
+                .Include(p => p.TbProjectMembers)
+                    .ThenInclude(m => m.User)
+                .FirstOrDefault(t => t.Id == id);
         }
 
         public TbProject GetProjectWithDetails(int projectId)

@@ -18,12 +18,14 @@ namespace ProjectManagement.BL.Implementations
         private readonly IHttpContextAccessor _httpContext;
         private readonly IHubContext<NotificationHub> _hub;
         private readonly INotificationRepository _notificationRepo;
-
+        private readonly IActivity _activity;
+        private readonly IUserRepository _userRepo;
         public ClsTask(ITaskRepository repo, ITaskHistory history,
             IHttpContextAccessor httpContext,
             IProjectMemberRepository projectMemberRepo,
             IHubContext<NotificationHub> hub,
-            INotificationRepository notificationRepo)
+            INotificationRepository notificationRepo,
+            IActivity activity)
         {
             _repo = repo;
             _history = history;
@@ -31,6 +33,7 @@ namespace ProjectManagement.BL.Implementations
             _projectMemberRepo = projectMemberRepo;
             _hub = hub;
             _notificationRepo = notificationRepo;
+            _activity = activity;
         }
 
         public ApiResponse GetAllTasks(TaskQueryDTO query)
@@ -135,6 +138,7 @@ namespace ProjectManagement.BL.Implementations
 
                 var user = _httpContext.HttpContext.User;
                 var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userName = user.FindFirst(ClaimTypes.Name)?.Value;
 
                 // a team member cannot create a task
                 if (user.IsInRole("TeamMember"))
@@ -234,8 +238,24 @@ namespace ProjectManagement.BL.Implementations
                     CreatedAt = DateTime.UtcNow
                 };
 
+                foreach (var claim in user.Claims)
+                {
+                    Console.WriteLine($"{claim.Type} : {claim.Value}");
+                }
+
                 _repo.Add(task);
                 _repo.Save();
+
+                
+
+                // save in TbActivity log
+                _activity.Log(
+                    userId,
+                    "created",
+                    "Task",
+                    task.Id.ToString(),
+                    $"{userName} created task {task.Title}"
+                );
 
                 result.Data = new TasksDTO
                 {
@@ -243,10 +263,9 @@ namespace ProjectManagement.BL.Implementations
                     Title = task.Title,
                     Status = task.Status,
                     Priority = task.Priority,
-                    AssignedUserName = task.AssignedToNavigation?.UserName,
                     DueDate = task.DueDate,
                     CreatedAt = task.CreatedAt,
-                    CreatedBy = task.CreatedBy
+                    CreatedBy = userName
                 };
                 result.StatusCode = "201";
                 return result;
@@ -603,6 +622,18 @@ namespace ProjectManagement.BL.Implementations
                 _repo.Delete(task);
                 _repo.Save();
 
+                var userName = user.FindFirst(ClaimTypes.Name)?.Value;
+
+                // save in TbActivity log
+                _activity.Log(
+                    userId,
+                    "deleted",
+                    "Task",
+                    task.Id.ToString(),
+                    // how to get the username here?
+                    $"{userName} deleted task {task.Title}"
+                );
+
                 result.StatusCode = "200";
 
                 return result;
@@ -700,6 +731,17 @@ namespace ProjectManagement.BL.Implementations
 
                 _repo.Update(task);
                 _repo.Save();
+
+                var userName = user.FindFirst(ClaimTypes.Name)?.Value;
+
+                // save in TbActivity log
+                _activity.Log(
+                    userId,
+                    "assigned",
+                    "Task",
+                    task.Id.ToString(),
+                    $"{userName} assigned task {task.Title} to {assignedMember.User.FirstName} {assignedMember.User.LastName}"
+                );
 
                 result.StatusCode = "200";
                 result.Data = new

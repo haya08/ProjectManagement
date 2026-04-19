@@ -2,6 +2,7 @@
 using Microsoft.IdentityModel.Tokens;
 using ProjectManagement.BL.Interfaces;
 using ProjectManagement.Models;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -24,7 +25,8 @@ namespace ProjectManagement.BL.Implementations
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Email, user.Email)
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.FirstName + " " + user.LastName)
             };
 
             var roles = await _userManager.GetRolesAsync(user);

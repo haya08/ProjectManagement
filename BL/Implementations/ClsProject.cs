@@ -6,6 +6,7 @@ using ProjectManagement.DTOs.Stats;
 using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
+using System.Diagnostics;
 using System.Security.Claims;
 
 namespace ProjectManagement.BL.Implementations
@@ -18,17 +19,22 @@ namespace ProjectManagement.BL.Implementations
         private readonly ITaskRepository _taskRepo;
         private readonly IProjectRepository _projectRepo;
         private readonly IProjectMemberRepository _projectMemberRepository;
+        private readonly IActivity _activity;
         public ClsProject(IProjectRepository repo, 
             IHttpContextAccessor httpContext, 
             IProjectMemberRepository projectMemberRepo,
             ITaskRepository taskRepo,
             IProjectRepository projectRepo,
-            IProjectMemberRepository projectMemberRepository)
+            IProjectMemberRepository projectMemberRepository,
+            IActivity activity)
         {
             _repo = repo;
             _httpContext = httpContext;
             _projectMemberRepo = projectMemberRepo;
             _taskRepo = taskRepo;
+            _projectRepo = projectRepo;
+            _projectMemberRepository = projectMemberRepository;
+            _activity = activity;
             _projectRepo = projectRepo;
             _projectMemberRepository = projectMemberRepository;
         }
@@ -60,6 +66,8 @@ namespace ProjectManagement.BL.Implementations
             if (project == null)
                 return new ApiResponse { StatusCode = "404" };
 
+            var creater = _projectMemberRepository.GetByUserAndProject(project.CreatedBy, project.Id);
+
             return new ApiResponse
             {
                 Data = new ProjectsDTO
@@ -67,8 +75,10 @@ namespace ProjectManagement.BL.Implementations
                     Id = project.Id,
                     Name = project.Name,
                     Description = project.Description,
-                    CreatedBy = project.CreatedBy,
-                    CreatedAt = project.CreatedAt
+                    CreatedBy = creater.User.FirstName + " " + creater.User.LastName,
+                    CreatedAt = project.CreatedAt,
+                    TotalTasks = project.TbTasks.Count,
+                    TotalMembers = project.TbProjectMembers.Count
                 },
                 StatusCode = "200"
             };
@@ -281,24 +291,24 @@ namespace ProjectManagement.BL.Implementations
                     TotalMembers = project.TbProjectMembers.Count
                 },
 
-                Members = project.TbProjectMembers.Select(m => new ProjectMemberDTO
-                {
-                    UserId = m.UserId,
-                    Role = m.Role,
-                    UserName = m.User?.FirstName + " " + m.User?.LastName
-                }).ToList(),
+                //Members = project.TbProjectMembers.Select(m => new ProjectMemberDTO
+                //{
+                //    UserId = m.UserId,
+                //    Role = m.Role,
+                //    UserName = m.User?.FirstName + " " + m.User?.LastName
+                //}).ToList(),
 
-                Tasks = project.TbTasks.Select(t => new TasksDTO
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    Status = t.Status,
-                    Priority = t.Priority,
-                    AssignedUserName = t.AssignedToNavigation != null
-                        ? t.AssignedToNavigation.FirstName + " " + t.AssignedToNavigation.LastName
-                        : null,
-                    DueDate = t.DueDate
-                }).ToList()
+                //Tasks = project.TbTasks.Select(t => new TasksDTO
+                //{
+                //    Id = t.Id,
+                //    Title = t.Title,
+                //    Status = t.Status,
+                //    Priority = t.Priority,
+                //    AssignedUserName = t.AssignedToNavigation != null
+                //        ? t.AssignedToNavigation.FirstName + " " + t.AssignedToNavigation.LastName
+                //        : null,
+                //    DueDate = t.DueDate
+                //}).ToList()
             };
 
             result.Data = dto;
@@ -314,8 +324,9 @@ namespace ProjectManagement.BL.Implementations
             var user = _httpContext.HttpContext.User;
             var userId = _httpContext.HttpContext.User
                 .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userName = user.FindFirst(ClaimTypes.Name)?.Value;
 
-            if(user.IsInRole("Team Member"))
+            if (user.IsInRole("Team Member"))
             {
                 result.Errors.Add(new { Message = "You don't have permission to create a project" });
                 result.StatusCode = "403";
@@ -323,7 +334,6 @@ namespace ProjectManagement.BL.Implementations
             }
 
             // check if the project manger status is rejected
-
 
             if (string.IsNullOrWhiteSpace(dto.Name))
             {
@@ -343,12 +353,34 @@ namespace ProjectManagement.BL.Implementations
             _repo.Add(project);
             _repo.Save();
 
+            // save in project member table as project manager
+            var projectMember = new TbProjectMember
+            {
+                ProjectId = project.Id,
+                UserId = userId,
+                Role = "Project Manager",
+                JoinedAt = DateTime.UtcNow
+            };
+            _projectMemberRepo.Add(projectMember);
+            _projectMemberRepo.Save();
+
+            
+
+            // save in TbActivity log
+            _activity.Log(
+                userId,
+                "created",
+                "Project",
+                project.Id.ToString(),
+                $"{userName} created project {project.Name}"
+            );
+
             result.Data = new ProjectsDTO
             {
                 Id = project.Id,
                 Name = project.Name,
                 Description = project.Description,
-                CreatedBy = project.CreatedBy,
+                CreatedBy = userName,
                 CreatedAt = project.CreatedAt
             };
             result.StatusCode = "201";
@@ -405,6 +437,19 @@ namespace ProjectManagement.BL.Implementations
 
             _repo.Delete(project);
             _repo.Save();
+
+            var user = _httpContext.HttpContext.User;
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userName = user.FindFirst(ClaimTypes.Name)?.Value;
+
+            // save in TbActivity log
+            _activity.Log(
+                userId,
+                "deleted",
+                "Project",
+                project.Id.ToString(),
+                $"{userName} deleted project {project.Name}"
+            );
 
             return new ApiResponse
             {
