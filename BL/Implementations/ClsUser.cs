@@ -457,38 +457,47 @@ namespace ProjectManagement.BL.Implementations
             var projects = projectMembers.Select(pm => pm.Project).ToList();
 
             // Stats
-            var total = tasks.Count;
+            var totalTasks = tasks.Count;
+            var totalProjects = projects.Count;
             var done = tasks.Count(t => t.Status == "done");
             var inProgress = tasks.Count(t => t.Status == "in_progress");
             var todo = tasks.Count(t => t.Status == "todo");
             var overdue = tasks.Count(t => t.DueDate < DateTime.UtcNow && t.Status != "done");
 
+            // Actual
+            var doneTasks = tasks.Count(t => t.Status.ToLower() == "done");
+            var actual = (double)doneTasks / totalTasks * 100;
+
+            // Planned (based on due date)
+            var shouldBeDone = tasks.Count(t => t.DueDate <= DateTime.UtcNow);
+            var planned = (double)shouldBeDone / totalTasks * 100;
+
             var dashboard = new UserDashboardDTO
             {
-                MyTasks = tasks.Select(t => new TasksDTO
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    Status = t.Status,
-                    Priority = t.Priority
-                }).ToList(),
+                //MyTasks = tasks.Select(t => new TasksDTO
+                //{
+                //    Id = t.Id,
+                //    Title = t.Title,
+                //    Status = t.Status,
+                //    Priority = t.Priority
+                //}).ToList(),
 
-                MyProjects = projects.Select(p => new ProjectsDTO
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    CreatedAt = p.CreatedAt
-                }).ToList(),
+                //MyProjects = projects.Select(p => new ProjectsDTO
+                //{
+                //    Id = p.Id,
+                //    Name = p.Name,
+                //    Description = p.Description,
+                //    CreatedAt = p.CreatedAt
+                //}).ToList(),
 
-                Stats = new UserStatsDTO
-                {
-                    TotalTasks = total,
-                    DoneTasks = done,
-                    InProgressTasks = inProgress,
-                    TodoTasks = todo,
-                    OverDueTasks = overdue
-                }
+                TotalProjects = totalProjects,
+                TotalTasks = totalTasks,
+                DoneTasks = done,
+                InProgressTasks = inProgress,
+                TodoTasks = todo,
+                OverDueTasks = overdue,
+                PlannedPercentage = Math.Round(planned, 2),
+                ActualPercentage = Math.Round(actual, 2)
             };
 
             result.Data = dashboard;
@@ -521,6 +530,9 @@ namespace ProjectManagement.BL.Implementations
             var pendingTasks = tasks.Count(t => t.Status != "done");
             var overdueTasks = tasks.Count(t => t.DueDate < DateTime.UtcNow && t.Status != "done");
 
+            var activeUsers = users
+                .Count(u => u.LastActiveAt >= DateTime.UtcNow.AddDays(-7));
+
             // Progress
             var progress = totalTasks == 0 ? 0 : (double)doneTasks / totalTasks * 100;
 
@@ -537,6 +549,8 @@ namespace ProjectManagement.BL.Implementations
                 DoneTasks = doneTasks,
                 PendingTasks = pendingTasks,
                 OverDueTasks = overdueTasks,
+
+                ActiveUsers = activeUsers,
 
                 SystemProgress = Math.Round(progress, 2)
             };

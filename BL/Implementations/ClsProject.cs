@@ -77,7 +77,7 @@ namespace ProjectManagement.BL.Implementations
                     Description = project.Description,
                     CreatedBy = creater.User.FirstName + " " + creater.User.LastName,
                     CreatedAt = project.CreatedAt,
-                    TotalTasks = project.TbTasks.Count,
+                    OpenTasks = project.TbTasks.Where(t => t.Status.ToLower() != "done").Count(),
                     TotalMembers = project.TbProjectMembers.Count
                 },
                 StatusCode = "200"
@@ -100,7 +100,9 @@ namespace ProjectManagement.BL.Implementations
                     Name = p.Name,
                     Description = p.Description,
                     CreatedBy = p.CreatedBy,
-                    CreatedAt = p.CreatedAt
+                    CreatedAt = p.CreatedAt,
+                    OpenTasks = p.TbTasks.Where(t => t.Status.ToLower() != "done").Count(),
+                    TotalMembers = p.TbProjectMembers.Count
                 });
 
             return new ApiResponse
@@ -287,7 +289,7 @@ namespace ProjectManagement.BL.Implementations
                     CreatedAt = project.CreatedAt,
                     CreatedBy = project.TbProjectMembers.FirstOrDefault(m => m.Role.ToLower() == "project manager")?.User?.FirstName + " " +
                                 project.TbProjectMembers.FirstOrDefault(m => m.Role.ToLower() == "project manager")?.User?.LastName,
-                    TotalTasks = project.TbTasks.Count,
+                    OpenTasks = project.TbTasks.Where(t => t.Status.ToLower() != "done").Count(),
                     TotalMembers = project.TbProjectMembers.Count
                 },
 
@@ -455,6 +457,50 @@ namespace ProjectManagement.BL.Implementations
             {
                 StatusCode = "200"
             };
+        }
+
+        public ApiResponse GetMembersWorkLoads(int projectId)
+        {
+            var result = new ApiResponse();
+            var user = _httpContext.HttpContext.User;
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Authorization
+            var isMember = _projectMemberRepo.GetByUserAndProject(userId, projectId);
+            if (isMember == null && !user.IsInRole("Admin"))
+            {
+                result.StatusCode = "403";
+                result.Errors.Add(new { Message = "Access denied" });
+                return result;
+            }
+
+            var members = _projectMemberRepo.GetByProjectId(projectId);
+            var workloads = new List<WorkloadDTO>();
+
+            foreach (var member in members)
+            {
+                var tasks = _taskRepo.GetByProjectId(projectId)
+                    .Where(t => t.AssignedTo == member.UserId);
+
+                var totalTasks = tasks.Count();
+                var doneTasks = tasks.Count(t => t.Status.ToLower() == "done");
+                var overDueTasks = tasks.Count(t => t.DueDate < DateTime.UtcNow && t.Status.ToLower() != "done");
+                var pendingTasks = totalTasks - doneTasks - overDueTasks;
+
+                workloads.Add(new WorkloadDTO
+                {
+                    UserId = member.UserId,
+                    Name = member.User?.FirstName + " " + member.User?.LastName,
+                    TotalTasks = totalTasks,
+                    DoneTasks = doneTasks,
+                    OverDueTasks = overDueTasks,
+                    PendingTasks = pendingTasks
+                });
+            }
+
+            result.Data = workloads;
+            result.StatusCode = "200";
+            return result;
         }
     }
 }

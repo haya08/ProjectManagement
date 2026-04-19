@@ -49,6 +49,13 @@ namespace ProjectManagement.Controllers
             return StatusCode(int.Parse(result.StatusCode), result);
         }
 
+        [HttpGet("{id}/workloads")]
+        public IActionResult GetGetMembersWorkLoads(int id)
+        {
+            var result = _projectBL.GetMembersWorkLoads(id);
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
         [HttpGet("{id}/dashboard")]
         public IActionResult GetDashboard(int id)
         {

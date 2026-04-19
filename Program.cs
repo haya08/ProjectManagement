@@ -104,5 +104,6 @@ app.MapControllers();
 app.UseStaticFiles();
 
 app.MapHub<NotificationHub>("/notificationHub");
+app.UseMiddleware<UserActivityMiddleware>();
 
 app.Run();

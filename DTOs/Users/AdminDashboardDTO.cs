@@ -13,6 +13,7 @@
         public int DoneTasks { get; set; }
         public int PendingTasks { get; set; }
         public int OverDueTasks { get; set; }
+        public int ActiveUsers { get; set; }
 
         public double SystemProgress { get; set; }
     }

@@ -2,6 +2,7 @@
 {
     public class UserStatsDTO
     {
+        public int TotalProjects { get; set; }
         public int TotalTasks { get; set; }
         public int DoneTasks { get; set; }
         public int InProgressTasks { get; set; }

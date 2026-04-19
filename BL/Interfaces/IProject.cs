@@ -9,6 +9,7 @@ namespace ProjectManagement.BL.Interfaces
         ApiResponse GetById(int id);
         ApiResponse GetMyProjects();
         ApiResponse GetProjectDetails(int projectId);
+        ApiResponse GetMembersWorkLoads(int projectId);
         ApiResponse GetProjectDashboard(int projectId);
         ApiResponse GetProjectStats(int projectId);
         ApiResponse Create(CreateProjectDTO dto);

@@ -11,7 +11,7 @@
         public string CreatedBy { get; set; }
 
         public DateTime? CreatedAt { get; set; }
-        public int TotalTasks { get; set; }
+        public int OpenTasks { get; set; }
         public int TotalMembers { get; set; }
     }
 }

@@ -36,6 +36,8 @@ namespace ProjectManagement.BL.Implementations
                 .Select(x => new
                 {
                     userId = x.UserId,
+                    action = x.Action,
+                    entityType = x.EntityType,
                     description = x.Description,
                     date = x.CreatedAt
                 });
