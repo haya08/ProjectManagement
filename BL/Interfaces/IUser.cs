@@ -7,6 +7,8 @@ namespace ProjectManagement.BL.Interfaces
     {
         Task<ApiResponse> Register(RegisterDTO dto);
         Task<ApiResponse> Login(LoginDTO dto);
+        Task<ApiResponse> RefreshTokenAsync(string token);
+        Task<bool> RevokeToken(string token);
         Task<ApiResponse> GetAllUsers();
         Task<ApiResponse> GetById(string id);
         Task<ApiResponse> GetCurrentUser(string userId);

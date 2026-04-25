@@ -30,6 +30,11 @@ namespace ProjectManagement.BL.Implementations
                 }
             }
 
+            //if (!context.User.Identity.IsAuthenticated)
+            //{
+            //    throw new Exception("you're not authenticated, buddy");
+            //}
+
             await _next(context);
         }
     }

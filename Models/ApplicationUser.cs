@@ -10,5 +10,6 @@ namespace ProjectManagement.Models
         public string? ProfileImageUrl { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? LastActiveAt { get; set; }
+        public List<TbRefreshToken>? RefreshTokens { get; set; }
     }
 }

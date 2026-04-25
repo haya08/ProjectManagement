@@ -9,7 +9,9 @@ using ProjectManagement.DTOs.Tasks;
 using ProjectManagement.DTOs.Users;
 using ProjectManagement.Models;
 using ProjectManagement.Repositories.Interfaces;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ProjectManagement.BL.Implementations
 {
@@ -128,9 +130,6 @@ namespace ProjectManagement.BL.Implementations
                 };
             }
 
-            if (user == null)
-                return new ApiResponse { StatusCode = "401" };
-
             var valid = await _userManager.CheckPasswordAsync(user, dto.Password);
 
             if (!valid)
@@ -156,16 +155,43 @@ namespace ProjectManagement.BL.Implementations
             }
 
             // هنا هنولد JWT بعد كده
-            var token = _JWT.GenerateToken(user);
+            var JWTtoken = await _JWT.GenerateToken(user);
+
+            var data = new AuthDTO()
+            {
+                Token = new JwtSecurityTokenHandler().WriteToken(JWTtoken),
+                UserId = user.Id,
+                Email = user.Email,
+                Roles = new List<string>(await _userManager.GetRolesAsync(user)),
+                IsAuthenticated = true,
+                RefreshTokenExpiration = JWTtoken.ValidTo
+            };
+
+            // check if there already a refresh token for this user
+            if (user.RefreshTokens.Any(t => t.IsActive))
+            {
+                var activeToken = user.RefreshTokens.FirstOrDefault(t => t.IsActive);
+                data.RefreshToken = activeToken.Token;
+                data.RefreshTokenExpiration = activeToken.ExpiresOn;
+            }
+            else
+            {
+                // generate a new refresh token
+                var refreshToken = _JWT.GenerateRefreshToken();
+                data.RefreshToken = refreshToken.Token;
+                data.RefreshTokenExpiration = refreshToken.ExpiresOn;
+
+                // save the refresh token in TbRefreshTokens table
+                user.RefreshTokens.Add(refreshToken);
+                await _userManager.UpdateAsync(user);
+            }
+
+            // set refresh token as http-only cookie
+            _JWT.SetRefreshTokenInCookie(data.RefreshToken, data.RefreshTokenExpiration);
 
             return new ApiResponse
             {
-                Data = new
-                {
-                    token = token,
-                    userId = user.Id,
-                    email = user.Email
-                },
+                Data = data,
                 StatusCode = "200"
             };
         }
@@ -174,6 +200,23 @@ namespace ProjectManagement.BL.Implementations
         public async Task<ApiResponse> Register(RegisterDTO dto)
         {
             var response = new ApiResponse();
+
+            // check if email already exists
+            var existing = await _userManager.FindByEmailAsync(dto.Email);
+            if(existing != null)
+            {
+                response.Errors.Add(new { Field = "email", Message = "Email already exists" });
+                response.StatusCode = "400";
+                return response;
+            }
+
+            // a user cannot choose Admin
+            if (dto.Role == "Admin")
+            {
+                response.Errors.Add(new { Message = "Invalid role" });
+                response.StatusCode = "400";
+                return response;
+            }
 
             var user = new ApplicationUser
             {
@@ -186,13 +229,6 @@ namespace ProjectManagement.BL.Implementations
                 CreatedAt = DateTime.UtcNow
             };
 
-            // a user cannot choose Admin
-            if (dto.Role == "Admin")
-            {
-                response.Errors.Add(new { Message = "Invalid role" });
-                response.StatusCode = "400";
-                return response;
-            }
 
             var result = await _userManager.CreateAsync(user, dto.Password);
 
@@ -218,9 +254,125 @@ namespace ProjectManagement.BL.Implementations
 
             await _userManager.UpdateAsync(user);
 
-            response.Data = "User created";
-            response.StatusCode = "201";
-            return response;
+            var data = new AuthDTO
+            {
+                IsAuthenticated = true,
+                Email = user.Email,
+                UserId = user.Id,
+                Roles = new List<string> { dto.Role }
+            };
+
+            // automatically login after registration
+            var JWTtoken = await _JWT.GenerateToken(user);
+            data.Token = new JwtSecurityTokenHandler().WriteToken(JWTtoken);
+
+            // generate a new refresh token
+            var refreshToken = _JWT.GenerateRefreshToken();
+            data.RefreshToken = refreshToken.Token;
+            data.RefreshTokenExpiration = refreshToken.ExpiresOn;
+
+            // save the refresh token in TbRefreshTokens table
+            user.RefreshTokens.Add(refreshToken);
+            await _userManager.UpdateAsync(user);
+
+            // set refresh token as http-only cookie
+            _JWT.SetRefreshTokenInCookie(data.RefreshToken, data.RefreshTokenExpiration);
+
+            return new ApiResponse
+            {
+                Data = new
+                {
+                    token = new JwtSecurityTokenHandler().WriteToken(JWTtoken),
+                    userId = user.Id,
+                    email = user.Email,
+                    roles = await _userManager.GetRolesAsync(user),
+                    expiresOn = JWTtoken.ValidTo
+                },
+                StatusCode = "200"
+            };
+        }
+
+        public async Task<ApiResponse> RefreshTokenAsync(string token)
+        {
+            var data = new AuthDTO();
+
+            var user = await _userManager.Users.SingleOrDefaultAsync(u =>
+                u.RefreshTokens.Any(rt => rt.Token == token)
+            );
+
+            if (user == null)
+            {
+                return new ApiResponse
+                {
+                    Data = "Invalid token",
+                    StatusCode = "404"
+                };
+            }
+
+            var refreshToken = user.RefreshTokens.Single(rt => rt.Token == token);
+
+            if (!refreshToken.IsActive)
+            {
+                return new ApiResponse
+                {
+                    Data = "Token is not active",
+                    StatusCode = "400"
+                };
+            }
+
+            // Revoke the old refresh token
+            refreshToken.RevokedOn = DateTime.UtcNow;
+
+            // Generate a new refresh token
+            var newRefreshToken = _JWT.GenerateRefreshToken();
+            user.RefreshTokens.Add(newRefreshToken);
+            await _userManager.UpdateAsync(user);
+
+            // Generate a new JWT token
+            var newToken = await _JWT.GenerateToken(user);
+
+            data.IsAuthenticated = true;
+            data.Token = new JwtSecurityTokenHandler().WriteToken(newToken);
+            data.RefreshToken = newRefreshToken.Token;
+            data.RefreshTokenExpiration = newRefreshToken.ExpiresOn;
+            data.Email = user.Email;
+            data.UserId = user.Id;
+
+            var roles = await _userManager.GetRolesAsync(user);
+            data.Roles = roles.ToList();
+
+            // Set the new refresh token in an http-only cookie
+            _JWT.SetRefreshTokenInCookie(newRefreshToken.Token, newRefreshToken.ExpiresOn);
+
+            return new ApiResponse
+            {
+                Data = data,
+                StatusCode = "200"
+            };
+        }
+
+        public async Task<bool> RevokeToken(string token)
+        {
+            var data = new AuthDTO();
+
+            var user = await _userManager.Users.SingleOrDefaultAsync(u =>
+                u.RefreshTokens.Any(rt => rt.Token == token)
+            );
+
+            if (user == null)
+                return false;
+
+            var refreshToken = user.RefreshTokens.Single(rt => rt.Token == token);
+
+            if (!refreshToken.IsActive)
+                return false;
+
+            // Revoke the old refresh token
+            refreshToken.RevokedOn = DateTime.UtcNow;
+
+            await _userManager.UpdateAsync(user);
+
+            return true;
         }
 
         public async Task<ApiResponse> LogOut()

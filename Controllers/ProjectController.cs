@@ -20,8 +20,8 @@ namespace ProjectManagement.Controllers
             _projectBL = projectBL;
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet]
-        [Authorize("Admin")]
         public IActionResult GetAll()
         {
             var result = _projectBL.GetAll();

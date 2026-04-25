@@ -30,6 +30,7 @@ namespace ProjectManagement.Controllers
 
         // UPLOAD
         [HttpPost]
+        [Consumes("multipart/form-data")]
         public async Task<IActionResult> Upload(int taskId, [FromForm(Name = "file")] IFormFile File)
         {
             var userId = _httpContext.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);

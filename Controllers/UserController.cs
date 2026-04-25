@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProjectManagement.BL.Interfaces;
+using ProjectManagement.DTOs;
 using ProjectManagement.DTOs.Users;
 using System.Security.Claims;
 
@@ -46,6 +47,54 @@ namespace ProjectManagement.Controllers
         {
             var result = await _userBL.Login(dto);
             return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [HttpGet("refresh-token")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            var result = await _userBL.RefreshTokenAsync(refreshToken);
+
+            return StatusCode(int.Parse(result.StatusCode), result);
+        }
+
+        [HttpPost("revoke-token")]
+        public async Task<IActionResult> RevokeToken([FromBody] RevokeTokenDTO dto)
+        {
+            var token = dto.Token ?? Request.Cookies["refreshToken"];
+
+            if (string.IsNullOrEmpty(token))
+            {
+                var response = new ApiResponse
+                {
+                    Data = null,
+                    Errors = new List<object> { "Token is required" },
+                    StatusCode = "400"
+                };
+                return StatusCode(int.Parse(response.StatusCode), response);
+            }
+
+            var result = await _userBL.RevokeToken(token);
+            if (!result)
+            {
+                var response = new ApiResponse
+                {
+                    Data = null,
+                    Errors = new List<object> { "Token not found" },
+                    StatusCode = "404"
+                };
+                return StatusCode(int.Parse(response.StatusCode), response);
+            }
+
+            var successResponse = new ApiResponse
+            {
+                Data = null,
+                Errors = null,
+                StatusCode = "200"
+            };
+
+            return StatusCode(int.Parse(successResponse.StatusCode), successResponse);
         }
 
         [Authorize(Roles = "Admin")]
